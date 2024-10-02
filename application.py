@@ -6,6 +6,8 @@ import random
 import json
 import boto3
 from botocore.exceptions import ClientError
+import logging
+from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 
@@ -30,11 +32,22 @@ OPENING_SCHEDULE = {
 }
 
 # S3 configuration
-S3_BUCKET = 'your-s3-bucket-name'
+S3_BUCKET = 'chickentraining'
 S3_KEY = 'chicken_data.json'
 
 # Initialize S3 client
 s3 = boto3.client('s3')
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+file_handler = RotatingFileHandler('app.log', maxBytes=10240, backupCount=10)
+file_handler.setFormatter(logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+))
+file_handler.setLevel(logging.INFO)
+app.logger.addHandler(file_handler)
+app.logger.setLevel(logging.INFO)
+app.logger.info('Chicken Tracker startup')
 
 def get_sams_club_opening_time():
     global sams_club_opening_time, working_ovens
@@ -54,11 +67,12 @@ def get_sams_club_opening_time():
     # Randomly decide if an oven is out of order
     working_ovens = 3 if random.random() < 0.2 else 4
     
-    print(f"Next opening time: {sams_club_opening_time}, Working ovens: {working_ovens}")
+    app.logger.info(f"Next opening time: {sams_club_opening_time}, Working ovens: {working_ovens}")
 
 def cook_chickens(time, quantity):
     global available_chickens
     available_chickens.append((time, quantity))
+    app.logger.info(f"Cooked {quantity} chickens at {time}")
 
 def remove_expired_chickens(current_time):
     global available_chickens
@@ -99,6 +113,10 @@ def get_status():
         is_available = False
 
     total_available_chickens = sum(quantity for _, quantity in available_chickens)
+
+    app.logger.info(f"Status request: Opening time: {sams_club_opening_time}, Current time: {now}, "
+                    f"Minutes since opening: {minutes_since_opening}, Is available: {is_available}, "
+                    f"Working ovens: {working_ovens}, Available chickens: {total_available_chickens}")
 
     return jsonify({
         'sams_club_opening_time': sams_club_opening_time.isoformat() if sams_club_opening_time else None,
@@ -161,6 +179,8 @@ def log_data():
         )
     except ClientError:
         return jsonify({'error': 'Failed to save data'}), 500
+    
+    app.logger.info(f"Logged data: {json.dumps(data)}")
     
     return jsonify({'message': 'Data logged successfully'}), 200
 
@@ -269,6 +289,15 @@ scheduler = BackgroundScheduler(timezone=eastern_tz)
 scheduler.add_job(get_sams_club_opening_time, 'cron', hour=0, minute=0)
 scheduler.start()
 
+@app.route('/', methods=['GET'])
+def health_check():
+    app.logger.info("Health check request received")
+    return jsonify({
+        'status': 'healthy',
+        'message': 'Chicken Tracker is running'
+    }), 200
+
 if __name__ == '__main__':
     get_sams_club_opening_time()  # Initialize the opening time
-    app.run(debug=True)
+    app.logger.info('Application starting')
+    app.run(host='0.0.0.0', port=5000, debug=False)
