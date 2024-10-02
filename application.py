@@ -1,39 +1,17 @@
-from flask import Flask, jsonify, request, render_template_string
+from flask import Flask, jsonify, request, render_template_string, send_from_directory
 from datetime import datetime, timedelta
-from apscheduler.schedulers.background import BackgroundScheduler
-import pytz
-import random
 import json
 import boto3
 from botocore.exceptions import ClientError
 import logging
 from logging.handlers import RotatingFileHandler
 
-app = Flask(__name__)
-
-# Global variables
-sams_club_opening_time = None
-eastern_tz = pytz.timezone('US/Eastern')
-total_ovens = 4
-working_ovens = 4
-chickens_per_oven = 32
-chicken_shelf_life = 4 * 60  # 4 hours in minutes
-available_chickens = []
-oven_cycle_time = 100  # minutes
-
-OPENING_SCHEDULE = {
-    0: (8, 0),   # Monday
-    1: (8, 0),   # Tuesday
-    2: (8, 0),   # Wednesday
-    3: (8, 0),   # Thursday
-    4: (8, 0),   # Friday
-    5: (8, 0),   # Saturday
-    6: (10, 0),  # Sunday
-}
+app = Flask(__name__, static_folder='static')
 
 # S3 configuration
 S3_BUCKET = 'chickentraining'
 S3_KEY = 'chicken_data.json'
+S3_OVEN_STATE_KEY = 'oven_states.json'
 
 # Initialize S3 client
 s3 = boto3.client('s3')
@@ -49,112 +27,68 @@ app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.INFO)
 app.logger.info('Chicken Tracker startup')
 
-def get_sams_club_opening_time():
-    global sams_club_opening_time, working_ovens
-    now = datetime.now(eastern_tz)
-    weekday = now.weekday()
-    opening_hour, opening_minute = OPENING_SCHEDULE[weekday]
-    todays_opening = now.replace(hour=opening_hour, minute=opening_minute, second=0, microsecond=0)
-    
-    if now < todays_opening:
-        sams_club_opening_time = todays_opening
-    else:
-        next_day = now + timedelta(days=1)
-        next_weekday = next_day.weekday()
-        next_opening_hour, next_opening_minute = OPENING_SCHEDULE[next_weekday]
-        sams_club_opening_time = next_day.replace(hour=next_opening_hour, minute=next_opening_minute, second=0, microsecond=0)
-    
-    # Randomly decide if an oven is out of order
-    working_ovens = 3 if random.random() < 0.2 else 4
-    
-    app.logger.info(f"Next opening time: {sams_club_opening_time}, Working ovens: {working_ovens}")
+@app.route('/js/<path:path>')
+def send_js(path):
+    return send_from_directory('static/js', path)
 
-def cook_chickens(time, quantity):
-    global available_chickens
-    available_chickens.append((time, quantity))
-    app.logger.info(f"Cooked {quantity} chickens at {time}")
+@app.route('/', methods=['GET'])
+def dashboard():
+    html = '''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Chicken Tracker Dashboard</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+            .oven { border: 1px solid #ddd; padding: 10px; margin-bottom: 15px; }
+            .out-of-service { background-color: #ffcccc; }
+            button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; cursor: pointer; margin: 5px; }
+            input[type="number"] { width: 60px; }
+            #log { height: 200px; overflow-y: scroll; border: 1px solid #ddd; padding: 10px; margin-top: 20px; }
+            .oven-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        </style>
+    </head>
+    <body>
+        <h1>Chicken Tracker Dashboard</h1>
+        <div class="oven-grid" id="ovens">
+            <!-- Oven divs will be dynamically inserted here -->
+        </div>
+        <div>
+            <h2>Quick Actions</h2>
+            <button onclick="logSpecialEvent()">Log Special Event</button>
+            <button onclick="logWeather()">Log Weather</button>
+            <button onclick="logIssue()">Log Issue</button>
+        </div>
+        <div id="log">
+            <h2>Activity Log</h2>
+            <ul id="activity-log"></ul>
+        </div>
+        <script src="/js/dashboard.js"></script>
+    </body>
+    </html>
+    '''
+    return render_template_string(html)
 
-def remove_expired_chickens(current_time):
-    global available_chickens
-    available_chickens = [(time, quantity) for time, quantity in available_chickens 
-                          if (current_time - time).total_seconds() / 60 < chicken_shelf_life]
-
-@app.route('/status', methods=['GET'])
-def get_status():
-    now = datetime.now(eastern_tz)
-    if sams_club_opening_time is None or now.date() > sams_club_opening_time.date():
-        get_sams_club_opening_time()
-    
-    weekday = now.weekday()
-    opening_hour, opening_minute = OPENING_SCHEDULE[weekday]
-    todays_opening = now.replace(hour=opening_hour, minute=opening_minute, second=0, microsecond=0)
-    
-    remove_expired_chickens(now)
-    
-    if now >= todays_opening:
-        minutes_since_opening = int((now - todays_opening).total_seconds() // 60)
-        
-        # At opening time, one oven is already done and another starts
-        if minutes_since_opening == 0:
-            cook_chickens(now, chickens_per_oven)  # One oven already done
-            cook_chickens(now - timedelta(minutes=oven_cycle_time), chickens_per_oven)  # Another oven starting
-        
-        # Cook chickens in cycles throughout the day
-        elif minutes_since_opening % oven_cycle_time == 0 and now.hour < 17:
-            cook_chickens(now, chickens_per_oven)
-        
-        # Cook chickens around 5 PM
-        elif now.hour == 17 and now.minute == 0:
-            cook_chickens(now, 2 * chickens_per_oven)  # Last two ovens come out
-        
-        is_available = len(available_chickens) > 0
-    else:
-        minutes_since_opening = int((now - sams_club_opening_time).total_seconds() // 60)
-        is_available = False
-
-    total_available_chickens = sum(quantity for _, quantity in available_chickens)
-
-    app.logger.info(f"Status request: Opening time: {sams_club_opening_time}, Current time: {now}, "
-                    f"Minutes since opening: {minutes_since_opening}, Is available: {is_available}, "
-                    f"Working ovens: {working_ovens}, Available chickens: {total_available_chickens}")
-
-    return jsonify({
-        'sams_club_opening_time': sams_club_opening_time.isoformat() if sams_club_opening_time else None,
-        'current_time': now.isoformat(),
-        'minutes_since_opening': minutes_since_opening,
-        'is_available': is_available,
-        'working_ovens': working_ovens,
-        'available_chickens': total_available_chickens
-    })
-
-@app.route('/log_data', methods=['POST'])
-def log_data():
+@app.route('/log_batch', methods=['POST'])
+def log_batch():
     data = request.json
-    required_fields = [
-        'timestamp',
-        'batch_start_time',
-        'batch_end_time',
-        'chickens_cooked',
-        'chickens_sold',
-        'working_ovens',
-        'oven_number',
-        'special_event',
-        'weather',
-        'temperature',
-        'unexpected_issues',
-        'staff_on_duty'
-    ]
+    required_fields = ['ovens', 'first_batch_of_shift', 'weather', 'temperature']
     
     if not all(field in data for field in required_fields):
         return jsonify({'error': 'Missing required fields'}), 400
     
-    # Add some automatic fields
-    batch_start = datetime.fromisoformat(data['batch_start_time'])
-    batch_end = datetime.fromisoformat(data['batch_end_time'])
-    data['cooking_duration'] = (batch_end - batch_start).total_seconds() / 60
-    data['day_of_week'] = batch_start.weekday()
-    data['time_of_day'] = batch_start.strftime('%H:%M')
-    data['is_weekend'] = batch_start.weekday() >= 5
+    # Process each oven's data
+    for oven in data['ovens']:
+        oven['batch_start_time'] = oven['start_time']
+        oven['batch_end_time'] = oven['end_time']
+        oven['chickens_sold'] = oven['chickens_cooked'] - oven['chickens_leftover']
+        
+        batch_end = datetime.fromisoformat(oven['batch_end_time'])
+        oven['day_of_week'] = batch_end.weekday()
+        oven['time_of_day'] = batch_end.strftime('%H:%M')
+        oven['is_weekend'] = batch_end.weekday() >= 5
     
     # Load existing data from S3
     try:
@@ -166,8 +100,54 @@ def log_data():
         else:
             return jsonify({'error': 'Failed to retrieve existing data'}), 500
     
+    # If this is the first batch of the shift, add estimated previous batches
+    if data['first_batch_of_shift']:
+        store_open_time = datetime.fromisoformat(data['ovens'][0]['batch_end_time']).replace(hour=8, minute=0, second=0, microsecond=0)
+        estimated_batches = [
+            {
+                'batch_end_time': store_open_time.isoformat(),
+                'batch_start_time': (store_open_time - timedelta(minutes=100)).isoformat(),
+                'chickens_cooked': 28,
+                'chickens_leftover': 0,
+                'chickens_sold': 28,
+                'day_of_week': store_open_time.weekday(),
+                'time_of_day': store_open_time.strftime('%H:%M'),
+                'is_weekend': store_open_time.weekday() >= 5,
+                'estimated': True
+            }
+        ]
+        for i in range(1, 3):  # Add two more estimated batches
+            end_time = store_open_time + timedelta(minutes=100*i)
+            estimated_batches.append({
+                'batch_end_time': end_time.isoformat(),
+                'batch_start_time': (end_time - timedelta(minutes=100)).isoformat(),
+                'chickens_cooked': 84,
+                'chickens_leftover': 0,
+                'chickens_sold': 84,
+                'day_of_week': end_time.weekday(),
+                'time_of_day': end_time.strftime('%H:%M'),
+                'is_weekend': end_time.weekday() >= 5,
+                'estimated': True
+            })
+        existing_data.extend(estimated_batches)
+    
     # Append new data
-    existing_data.append(data)
+    existing_data.extend(data['ovens'])
+    
+    # Sort data by date and time
+    existing_data.sort(key=lambda x: x['batch_end_time'])
+    
+    # Assign batch numbers for each day
+    current_date = None
+    batch_number = 0
+    for entry in existing_data:
+        entry_date = datetime.fromisoformat(entry['batch_end_time']).date()
+        if entry_date != current_date:
+            current_date = entry_date
+            batch_number = 1
+        else:
+            batch_number += 1
+        entry['batch_number'] = batch_number
     
     # Save updated data to S3
     try:
@@ -180,114 +160,88 @@ def log_data():
     except ClientError:
         return jsonify({'error': 'Failed to save data'}), 500
     
-    app.logger.info(f"Logged data: {json.dumps(data)}")
+    app.logger.info(f"Logged batch data: {json.dumps(data)}")
     
-    return jsonify({'message': 'Data logged successfully'}), 200
+    return jsonify({'message': 'Batch logged successfully'}), 200
 
-@app.route('/input', methods=['GET'])
-def input_form():
-    html = '''
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Log Chicken Data</title>
-        <style>
-            body { font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; }
-            input, select { width: 100%; padding: 8px; margin: 5px 0 15px; }
-            button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; cursor: pointer; }
-        </style>
-    </head>
-    <body>
-        <h2>Log Chicken Data</h2>
-        <form id="chickenForm">
-            <label for="batch_start_time">Batch Start Time:</label>
-            <input type="datetime-local" id="batch_start_time" required>
-            
-            <label for="batch_end_time">Batch End Time:</label>
-            <input type="datetime-local" id="batch_end_time" required>
-            
-            <label for="chickens_cooked">Chickens Cooked:</label>
-            <input type="number" id="chickens_cooked" required>
-            
-            <label for="chickens_sold">Chickens Sold:</label>
-            <input type="number" id="chickens_sold" required>
-            
-            <label for="working_ovens">Working Ovens:</label>
-            <input type="number" id="working_ovens" min="1" max="4" required>
-            
-            <label for="oven_number">Oven Number:</label>
-            <input type="number" id="oven_number" min="1" max="4" required>
-            
-            <label for="special_event">Special Event:</label>
-            <input type="text" id="special_event">
-            
-            <label for="weather">Weather:</label>
-            <select id="weather" required>
-                <option value="sunny">Sunny</option>
-                <option value="cloudy">Cloudy</option>
-                <option value="rainy">Rainy</option>
-                <option value="snowy">Snowy</option>
-            </select>
-            
-            <label for="temperature">Temperature (°F):</label>
-            <input type="number" id="temperature" required>
-            
-            <label for="unexpected_issues">Unexpected Issues:</label>
-            <input type="text" id="unexpected_issues">
-            
-            <label for="staff_on_duty">Staff on Duty:</label>
-            <input type="number" id="staff_on_duty" required>
-            
-            <button type="submit">Submit</button>
-        </form>
-        
-        <script>
-            document.getElementById('chickenForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                var data = {
-                    timestamp: new Date().toISOString(),
-                    batch_start_time: document.getElementById('batch_start_time').value,
-                    batch_end_time: document.getElementById('batch_end_time').value,
-                    chickens_cooked: parseInt(document.getElementById('chickens_cooked').value),
-                    chickens_sold: parseInt(document.getElementById('chickens_sold').value),
-                    working_ovens: parseInt(document.getElementById('working_ovens').value),
-                    oven_number: parseInt(document.getElementById('oven_number').value),
-                    special_event: document.getElementById('special_event').value || null,
-                    weather: document.getElementById('weather').value,
-                    temperature: parseInt(document.getElementById('temperature').value),
-                    unexpected_issues: document.getElementById('unexpected_issues').value || null,
-                    staff_on_duty: parseInt(document.getElementById('staff_on_duty').value)
-                };
-                
-                fetch('/log_data', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    alert('Data logged successfully');
-                    document.getElementById('chickenForm').reset();
-                })
-                .catch((error) => {
-                    alert('Error logging data: ' + error);
-                });
-            });
-        </script>
-    </body>
-    </html>
-    '''
-    return render_template_string(html)
-
-# Initialize the scheduler
-scheduler = BackgroundScheduler(timezone=eastern_tz)
-scheduler.add_job(get_sams_club_opening_time, 'cron', hour=0, minute=0)
-scheduler.start()
+@app.route('/log', methods=['POST'])
+def log_action():
+    data = request.json
+    action = data.get('action')
+    log_data = data.get('data', {})
+    
+    app.logger.info(f"Logged action: {action}, Data: {json.dumps(log_data)}")
+    
+    # Load existing data from S3
+    try:
+        response = s3.get_object(Bucket=S3_BUCKET, Key=S3_KEY)
+        existing_data = json.loads(response['Body'].read().decode('utf-8'))
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NoSuchKey':
+            existing_data = []
+        else:
+            return jsonify({'error': 'Failed to retrieve existing data'}), 500
+    
+    # Process the log data based on the action
+    if action == 'start_cooking':
+        log_entry = {
+            'action': 'start_cooking',
+            'oven': log_data['oven'],
+            'chickens': log_data['chickens'],
+            'start_time': log_data['start_time'],
+            'expected_end_time': log_data['expected_end_time']
+        }
+    elif action == 'adjust_cooking_time':
+        log_entry = {
+            'action': 'adjust_cooking_time',
+            'oven': log_data['oven'],
+            'new_time_left': log_data['new_time_left'],
+            'new_expected_end_time': log_data['new_expected_end_time']
+        }
+    elif action == 'finish_cooking':
+        log_entry = {
+            'action': 'finish_cooking',
+            'oven': log_data['oven'],
+            'chickens': log_data['chickens'],
+            'start_time': log_data['start_time'],
+            'expected_end_time': log_data['expected_end_time'],
+            'actual_end_time': log_data['actual_end_time']
+        }
+    elif action == 'post_rush':
+        log_entry = {
+            'action': 'post_rush',
+            'oven': log_data['oven'],
+            'chickens_taken': log_data['chickens_taken'],
+            'chickens_left': log_data['chickens_left'],
+            'time': log_data['time']
+        }
+    elif action in ['special_event', 'weather', 'issue']:
+        log_entry = {
+            'action': action,
+            'time': log_data['time'],
+            'details': log_data
+        }
+    else:
+        return jsonify({'error': 'Unknown action type'}), 400
+    
+    # Add timestamp to the log entry
+    log_entry['timestamp'] = datetime.now().isoformat()
+    
+    # Append new data
+    existing_data.append(log_entry)
+    
+    # Save updated data to S3
+    try:
+        s3.put_object(
+            Bucket=S3_BUCKET,
+            Key=S3_KEY,
+            Body=json.dumps(existing_data, indent=2).encode('utf-8'),
+            ContentType='application/json'
+        )
+    except ClientError:
+        return jsonify({'error': 'Failed to save data'}), 500
+    
+    return jsonify({'message': 'Action logged successfully'}), 200
 
 @app.route('/', methods=['GET'])
 def health_check():
@@ -297,7 +251,62 @@ def health_check():
         'message': 'Chicken Tracker is running'
     }), 200
 
+@app.route('/oven_states', methods=['GET'])
+def get_oven_states():
+    try:
+        response = s3.get_object(Bucket=S3_BUCKET, Key=S3_OVEN_STATE_KEY)
+        oven_states = json.loads(response['Body'].read().decode('utf-8'))
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NoSuchKey':
+            # If the file doesn't exist, create an empty oven states object
+            oven_states = {}
+            try:
+                s3.put_object(
+                    Bucket=S3_BUCKET,
+                    Key=S3_OVEN_STATE_KEY,
+                    Body=json.dumps(oven_states).encode('utf-8'),
+                    ContentType='application/json'
+                )
+            except ClientError as put_error:
+                app.logger.error(f"Error creating oven states file: {str(put_error)}")
+                return jsonify({'error': 'Failed to create oven states file'}), 500
+        else:
+            app.logger.error(f"Error retrieving oven states: {str(e)}")
+            return jsonify({'error': 'Failed to retrieve oven states'}), 500
+    return jsonify(oven_states)
+
+@app.route('/update_oven_state', methods=['POST'])
+def update_oven_state():
+    data = request.json
+    oven_number = data.get('oven')
+    oven_state = data.get('state')
+    
+    try:
+        response = s3.get_object(Bucket=S3_BUCKET, Key=S3_OVEN_STATE_KEY)
+        oven_states = json.loads(response['Body'].read().decode('utf-8'))
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NoSuchKey':
+            # If the file doesn't exist, create an empty oven states object
+            oven_states = {}
+        else:
+            app.logger.error(f"Error retrieving oven states: {str(e)}")
+            return jsonify({'error': 'Failed to retrieve oven states'}), 500
+    
+    oven_states[str(oven_number)] = oven_state
+    
+    try:
+        s3.put_object(
+            Bucket=S3_BUCKET,
+            Key=S3_OVEN_STATE_KEY,
+            Body=json.dumps(oven_states, indent=2).encode('utf-8'),
+            ContentType='application/json'
+        )
+    except ClientError as e:
+        app.logger.error(f"Error saving oven state: {str(e)}")
+        return jsonify({'error': 'Failed to save oven state'}), 500
+    
+    return jsonify({'message': 'Oven state updated successfully'}), 200
+
 if __name__ == '__main__':
-    get_sams_club_opening_time()  # Initialize the opening time
     app.logger.info('Application starting')
     app.run(host='0.0.0.0', port=5000, debug=False)
