@@ -1,5 +1,6 @@
 const ovenCount = 4;
-const defaultChickenCount = 28;
+const defaultSkewersCount = 7;
+const chickensPerSkewer = 4;
 
 function createOvenElement(ovenNumber) {
     return `
@@ -8,16 +9,17 @@ function createOvenElement(ovenNumber) {
             <p>Status: <span id="oven${ovenNumber}-status">Empty</span></p>
             <p>Start Time: <span id="oven${ovenNumber}-start">-</span></p>
             <p>Expected End Time: <span id="oven${ovenNumber}-end">-</span></p>
+            <p>Actual End Time: <span id="oven${ovenNumber}-actual-end">-</span></p>
             <p>Chickens: <span id="oven${ovenNumber}-chickens">0</span></p>
-            <input type="number" id="oven${ovenNumber}-capacity" value="${defaultChickenCount}" min="1" max="100">
+            <input type="number" id="oven${ovenNumber}-capacity" value="${defaultSkewersCount}" min="1" max="25">
             <button onclick="startCooking(${ovenNumber})">Start Cooking</button>
-            <button onclick="finishCooking(${ovenNumber})">Finish Cooking</button>
+            <button onclick="finishCooking(${ovenNumber})" id="finish-${ovenNumber}" disabled>Finish Cooking</button>
             <div id="oven${ovenNumber}-time-adjust" style="display:none;">
                 <input type="number" id="oven${ovenNumber}-time-left" min="1" value="90">
                 <button onclick="adjustCookingTime(${ovenNumber})">Adjust Time</button>
             </div>
             <div id="oven${ovenNumber}-post-rush" style="display:none;">
-                <p>Chickens Left After Rush: <input type="number" id="oven${ovenNumber}-left" min="0" max="${defaultChickenCount}"></p>
+                <p>Chickens Left After Rush: <input type="number" id="oven${ovenNumber}-left" min="0" max="${defaultSkewersCount * chickensPerSkewer}"></p>
                 <button onclick="logPostRush(${ovenNumber})">Log Post-Rush</button>
             </div>
         </div>
@@ -45,18 +47,33 @@ function loadOvenStates() {
 }
 
 function updateOvenDisplay(ovenNumber, state) {
-    if (state.status === 'Cooking') {
-        document.getElementById(`oven${ovenNumber}-status`).textContent = 'Cooking';
+    const finishButton = document.getElementById(`finish-${ovenNumber}`);
+    
+    if (state.status === 'Cooking' || state.status === 'Ready') {
+        document.getElementById(`oven${ovenNumber}-status`).textContent = state.status;
         document.getElementById(`oven${ovenNumber}-start`).textContent = new Date(state.startTime).toLocaleTimeString();
         document.getElementById(`oven${ovenNumber}-end`).textContent = new Date(state.expectedEndTime).toLocaleTimeString();
         document.getElementById(`oven${ovenNumber}-chickens`).textContent = state.chickens;
-        document.getElementById(`oven${ovenNumber}-time-adjust`).style.display = 'block';
-    } else if (state.status === 'Ready') {
-        document.getElementById(`oven${ovenNumber}-status`).textContent = 'Ready';
-        document.getElementById(`oven${ovenNumber}-start`).textContent = new Date(state.startTime).toLocaleTimeString();
-        document.getElementById(`oven${ovenNumber}-end`).textContent = new Date(state.expectedEndTime).toLocaleTimeString();
-        document.getElementById(`oven${ovenNumber}-chickens`).textContent = state.chickens;
-        document.getElementById(`oven${ovenNumber}-post-rush`).style.display = 'block';
+        document.getElementById(`oven${ovenNumber}-time-adjust`).style.display = state.status === 'Cooking' ? 'block' : 'none';
+        document.getElementById(`oven${ovenNumber}-post-rush`).style.display = state.status === 'Ready' ? 'block' : 'none';
+        
+        finishButton.disabled = false;
+        
+        if (state.status === 'Ready') {
+            document.getElementById(`oven${ovenNumber}-actual-end`).textContent = new Date(state.actualEndTime).toLocaleTimeString();
+            finishButton.disabled = true;
+        }
+    } else {
+        // Reset display for empty oven
+        document.getElementById(`oven${ovenNumber}-status`).textContent = 'Empty';
+        document.getElementById(`oven${ovenNumber}-start`).textContent = '-';
+        document.getElementById(`oven${ovenNumber}-end`).textContent = '-';
+        document.getElementById(`oven${ovenNumber}-actual-end`).textContent = '-';
+        document.getElementById(`oven${ovenNumber}-chickens`).textContent = '0';
+        document.getElementById(`oven${ovenNumber}-time-adjust`).style.display = 'none';
+        document.getElementById(`oven${ovenNumber}-post-rush`).style.display = 'none';
+        
+        finishButton.disabled = true;
     }
 }
 
@@ -75,7 +92,8 @@ function updateOvenState(ovenNumber, state) {
 
 function startCooking(ovenNumber) {
     const now = new Date();
-    const chickenCount = parseInt(document.getElementById(`oven${ovenNumber}-capacity`).value);
+    const skewersCount = parseInt(document.getElementById(`oven${ovenNumber}-capacity`).value);
+    const chickenCount = skewersCount * chickensPerSkewer;
     const expectedEndTime = new Date(now.getTime() + 90 * 60000); // 90 minutes from now
 
     const state = {
@@ -88,7 +106,7 @@ function startCooking(ovenNumber) {
     updateOvenDisplay(ovenNumber, state);
     updateOvenState(ovenNumber, state);
 
-    logActivity(`Started cooking ${chickenCount} chickens in Oven ${ovenNumber}`);
+    logActivity(`Started cooking ${skewersCount} skewers (${chickenCount} chickens) in Oven ${ovenNumber}`);
     sendLog('start_cooking', { 
         oven: ovenNumber, 
         chickens: chickenCount, 
@@ -131,17 +149,15 @@ function finishCooking(ovenNumber) {
     const expectedEndTime = document.getElementById(`oven${ovenNumber}-end`).textContent;
     const chickenCount = parseInt(document.getElementById(`oven${ovenNumber}-chickens`).textContent);
 
-    document.getElementById(`oven${ovenNumber}-status`).textContent = 'Ready';
-    document.getElementById(`oven${ovenNumber}-time-adjust`).style.display = 'none';
-    document.getElementById(`oven${ovenNumber}-post-rush`).style.display = 'block';
-
-    // Update oven state
     const state = {
         status: 'Ready',
         startTime: startTime,
         expectedEndTime: expectedEndTime,
+        actualEndTime: now.toISOString(),
         chickens: chickenCount
     };
+
+    updateOvenDisplay(ovenNumber, state);
     updateOvenState(ovenNumber, state);
 
     logActivity(`Finished cooking in Oven ${ovenNumber}`);
@@ -159,16 +175,10 @@ function logPostRush(ovenNumber) {
     const totalChickens = parseInt(document.getElementById(`oven${ovenNumber}-chickens`).textContent);
     const chickensTaken = totalChickens - chickensLeft;
 
-    document.getElementById(`oven${ovenNumber}-status`).textContent = 'Empty';
-    document.getElementById(`oven${ovenNumber}-start`).textContent = '-';
-    document.getElementById(`oven${ovenNumber}-end`).textContent = '-';
-    document.getElementById(`oven${ovenNumber}-chickens`).textContent = '0';
-    document.getElementById(`oven${ovenNumber}-post-rush`).style.display = 'none';
+    updateOvenDisplay(ovenNumber, {}); // Reset oven display
+    updateOvenState(ovenNumber, {}); // Clear oven state
 
-    // Clear oven state
-    updateOvenState(ovenNumber, {});
-
-    logActivity(`Post-rush: ${chickensTaken} chickens taken, ${chickensLeft} left from Oven ${ovenNumber}`);
+    logActivity(`Post-rush: ${chickensTaken} chickens taken, ${chickensLeft} chickens left from Oven ${ovenNumber}`);
     sendLog('post_rush', { 
         oven: ovenNumber, 
         chickens_taken: chickensTaken,
