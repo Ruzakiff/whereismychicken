@@ -25,22 +25,39 @@ for col in datetime_columns:
         data[col] = data[col].apply(safe_to_datetime)
         data[col] = data[col].apply(convert_to_eastern)
 
+# Identify duplicates
+duplicates = data[data.duplicated(keep=False)]
+print("Duplicates found:")
+print(duplicates)
+print(f"\nNumber of duplicates: {len(duplicates)}")
+
 # Remove duplicates
-data = data.drop_duplicates()
+data_no_duplicates = data.drop_duplicates()
 
 # Filter out entries before Oct 3, 10 AM EST
 cutoff_time = pd.Timestamp('2024-10-03 10:00:00', tz='US/Eastern')
-data = data[data['timestamp'] >= cutoff_time]
+data_filtered = data_no_duplicates[data_no_duplicates['timestamp'] >= cutoff_time]
+
+print(f"\nRows removed due to early timestamp: {len(data_no_duplicates) - len(data_filtered)}")
 
 # Sort the data by oven and timestamp
-data = data.sort_values(['oven', 'timestamp'])
+data_filtered = data_filtered.sort_values(['oven', 'timestamp'])
+
+# Save the new dataset
+data_filtered.to_json('cleaned_chicken_data.json', date_format='iso')
+print("\nCleaned data saved to 'cleaned_chicken_data.json'")
+
+# Print summary of changes
+print(f"\nOriginal dataset size: {len(data)}")
+print(f"Dataset size after removing duplicates: {len(data_no_duplicates)}")
+print(f"Final dataset size after filtering early entries: {len(data_filtered)}")
 
 # Initialize lists to store cooking sessions
 sessions = []
 
 # Iterate through each oven
-for oven in data['oven'].unique():
-    oven_data = data[data['oven'] == oven]
+for oven in data_filtered['oven'].unique():
+    oven_data = data_filtered[data_filtered['oven'] == oven]
     current_session = None
     
     for _, row in oven_data.iterrows():
@@ -93,6 +110,7 @@ for (date, oven), group in grouped_sessions:
         output.append(f"  {start} - {end}: {session['chickens']} chickens, {cooking_time} minutes")
 
 # Print the formatted output
+print("\nCooking Sessions:")
 print("\n".join(output))
 
 # Save the grouped sessions to a CSV file
