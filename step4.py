@@ -3,10 +3,10 @@ import numpy as np
 from datetime import timedelta
 
 # Load the cleaned data
-cooking_sessions = pd.read_csv('cleaned_cooking_sessions.csv')
+cooking_sessions = pd.read_csv('grouped_cooking_sessions.csv')
 
 # Convert datetime columns
-datetime_columns = ['start_time', 'end_time']
+datetime_columns = ['start_time', 'expected_end_time', 'end_time']
 for col in datetime_columns:
     cooking_sessions[col] = pd.to_datetime(cooking_sessions[col])
 

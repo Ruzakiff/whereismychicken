@@ -1,177 +1,136 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.impute import SimpleImputer
-import warnings
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.neighbors import NearestNeighbors
+import pytz
 
-#TODO LEARN TIME BETEWEN OVEN STARTS AS BUFER TIME TO LOAD 
-# Add this function to suppress warnings
-def suppress_warnings():
-    warnings.filterwarnings("ignore", category=UserWarning)
+# Load the data
+data = pd.read_csv('grouped_cooking_sessions.csv', parse_dates=['start_time', 'expected_end_time', 'leftovers_time', 'end_time'])
 
-# Call this function at the beginning of your script
-suppress_warnings()
+# Remove rows with NaN values
+data = data.dropna(subset=['end_time', 'leftovers'])
 
-# Load the data from CSV
-data = pd.read_csv('processed_chicken_data.csv')
+# Convert times to Eastern Time
+eastern = pytz.timezone('US/Eastern')
+for col in ['start_time', 'expected_end_time', 'leftovers_time', 'end_time']:
+    data[col] = data[col].dt.tz_convert(eastern)
 
-# Convert timestamp column to datetime using ISO8601 format
-data['timestamp'] = pd.to_datetime(data['timestamp'], format='ISO8601')
+# Preprocess the data
+data['day_of_week'] = data['start_time'].dt.dayofweek
+data['hour'] = data['start_time'].dt.hour
 
-# Sort the data by timestamp
-data = data.sort_values('timestamp')
+# Function to find the next oven finish time and leftovers for a specific oven
+def find_next_oven(current_time, day_of_week, oven):
+    future_sessions = data[(data['end_time'] > current_time) & (data['day_of_week'] == day_of_week) & (data['oven'] == oven)]
+    if future_sessions.empty:
+        return None, None
+    next_session = future_sessions.iloc[0]
+    return next_session['end_time'], next_session['leftovers']
 
-# Calculate cooking duration
-data['cooking_duration'] = data.groupby('oven')['timestamp'].diff().dt.total_seconds() / 60
-data['cooking_duration'] = data['cooking_duration'].fillna(0)
+# Function to get feature importance
+def get_feature_importance(model):
+    importance = model.feature_importances_
+    features = ['Hour', 'Minute', 'Day of Week']
+    return dict(zip(features, importance))
 
-# Filter out rows with zero or negative cooking duration
-data = data[data['cooking_duration'] > 0]
+# Function to find most similar historical data points
+def find_similar_datapoints(X, current_data, n_neighbors=3):
+    nbrs = NearestNeighbors(n_neighbors=n_neighbors, metric='euclidean').fit(X)
+    distances, indices = nbrs.kneighbors([current_data])
+    return indices[0]
 
-# Add day_of_week column
-data['day_of_week'] = data['timestamp'].dt.dayofweek
+# Prepare training data for each oven
+ovens = data['oven'].unique()
+models = {}
+oven_data_dict = {}
 
-# Add hour column
-data['hour'] = data['timestamp'].dt.hour
+for oven in ovens:
+    X = []
+    y_time = []
+    y_leftovers = []
 
-# Function to train model for each oven
-def train_oven_model(oven_data):
-    X = oven_data[['chickens', 'day_of_week', 'hour']]
-    y = oven_data['cooking_duration']
-    
-    # Remove rows with NaN values
-    X = X.dropna()
-    y = y[X.index]
-    
-    # One-hot encode the day_of_week and hour
-    encoder = OneHotEncoder(drop='first', sparse_output=False, handle_unknown='ignore')
-    encoded = encoder.fit_transform(X[['day_of_week', 'hour']])
-    
-    # Combine chickens with encoded features
-    X_encoded = np.column_stack([X['chickens'], encoded])
-    
-    # Use SimpleImputer to handle any remaining NaN values
-    imputer = SimpleImputer(strategy='mean')
-    X_encoded = imputer.fit_transform(X_encoded)
-    
-    model = LinearRegression()
-    model.fit(X_encoded, y)
-    
-    return model, encoder, imputer
-
-# Train models for each oven
-oven_models = {}
-for oven in data['oven'].unique():
     oven_data = data[data['oven'] == oven]
-    if not oven_data.empty:
-        oven_models[oven] = train_oven_model(oven_data)
+    for _, row in oven_data.iterrows():
+        current_time = row['start_time']
+        day_of_week = row['day_of_week']
+        next_time, leftovers = find_next_oven(current_time, day_of_week, oven)
+        if next_time is not None:
+            X.append([current_time.hour, current_time.minute, day_of_week])
+            y_time.append((next_time - current_time).total_seconds() / 60)
+            y_leftovers.append(leftovers)
 
-def get_next_batch_time(oven, current_time):
-    oven_data = data[data['oven'] == oven]
-    day_of_week = current_time.weekday()
+    X = np.array(X)
+    y_time = np.array(y_time)
+    y_leftovers = np.array(y_leftovers)
+
+    oven_data_dict[oven] = {'X': X, 'y_time': y_time, 'y_leftovers': y_leftovers}
+
+    # Train models
+    rf_time = RandomForestRegressor(n_estimators=50, random_state=42)
+    rf_time.fit(X, y_time)
+
+    rf_leftovers = RandomForestRegressor(n_estimators=50, random_state=42)
+    rf_leftovers.fit(X, y_leftovers)
+
+    models[oven] = {'time': rf_time, 'leftovers': rf_leftovers}
+
+# Function to predict next oven time and leftovers for all ovens
+def predict_next_ovens(current_time):
     hour = current_time.hour
-    
-    # Filter data for the same day of week and future hours
-    same_day_data = oven_data[(oven_data['day_of_week'] == day_of_week) & (oven_data['hour'] >= hour)]
-    
-    if same_day_data.empty:
-        # If no data for the same day, look for the next day
-        next_day_data = oven_data[oven_data['day_of_week'] == (day_of_week + 1) % 7]
-        if next_day_data.empty:
-            return None
-        next_batch = next_day_data.iloc[0]
-        days_ahead = 1
-    else:
-        next_batch = same_day_data.iloc[0]
-        days_ahead = 0
-    
-    next_time = current_time.replace(hour=next_batch['hour'], minute=next_batch['timestamp'].minute, second=0, microsecond=0)
-    if days_ahead > 0:
-        next_time += timedelta(days=days_ahead)
-    
-    return next_time
-
-def predict_time_until_ready(oven, current_time, chickens):
-    if oven not in oven_models:
-        return "No data available for this oven"
-    
-    model, encoder, imputer = oven_models[oven]
+    minute = current_time.minute
     day_of_week = current_time.weekday()
-    hour = current_time.hour
     
-    # Get the next batch time
-    next_batch_time = get_next_batch_time(oven, current_time)
+    input_data = np.array([[hour, minute, day_of_week]])
     
-    if next_batch_time is None:
-        return "Unable to predict next batch time"
-    
-    # Use the hour of the next batch time for prediction
-    prediction_hour = next_batch_time.hour
-    
-    # Prepare input data
-    X = pd.DataFrame({'chickens': [chickens], 'day_of_week': [day_of_week], 'hour': [prediction_hour]})
-    X_encoded = np.column_stack([X['chickens'], encoder.transform(X[['day_of_week', 'hour']])])
-    
-    # Predict cooking duration
-    predicted_duration = model.predict(X_encoded)[0]
-    
-    # Calculate predicted finish time
-    predicted_finish_time = next_batch_time + timedelta(minutes=predicted_duration)
-    
-    time_until_ready = (predicted_finish_time - current_time).total_seconds() / 60
-    return round(time_until_ready)
-
-# Function to get predictions for all ovens
-def get_todays_predictions(chickens=28):
-    current_time = datetime.now() #- timedelta(hours=24)
     predictions = {}
-    for oven in range(1, 5):
-        time_until_ready = predict_time_until_ready(oven, current_time, chickens)
-        if isinstance(time_until_ready, int):
-            predictions[f'Oven {oven}'] = f"Ready in: {time_until_ready} min"
-        else:
-            predictions[f'Oven {oven}'] = time_until_ready
+    for oven, model in models.items():
+        time_to_next = model['time'].predict(input_data)[0]
+        leftovers = model['leftovers'].predict(input_data)[0]
+        next_time = current_time + timedelta(minutes=time_to_next)
+        
+        time_importance = get_feature_importance(model['time'])
+        leftovers_importance = get_feature_importance(model['leftovers'])
+        
+        similar_indices = find_similar_datapoints(oven_data_dict[oven]['X'], input_data[0])
+        similar_data = oven_data_dict[oven]['X'][similar_indices]
+        similar_times = oven_data_dict[oven]['y_time'][similar_indices]
+        similar_leftovers = oven_data_dict[oven]['y_leftovers'][similar_indices]
+        
+        predictions[oven] = {
+            'next_time': next_time,
+            'leftovers': leftovers,
+            'time_importance': time_importance,
+            'leftovers_importance': leftovers_importance,
+            'similar_data': similar_data,
+            'similar_times': similar_times,
+            'similar_leftovers': similar_leftovers
+        }
+    
     return predictions
 
-# Example usage for today's predictions
-today_predictions = get_todays_predictions()
-print("Today's predictions:", today_predictions)
+# Example usage
+current_time = datetime.now(eastern).replace(hour=12, minute=0, second=0, microsecond=0)
+predictions = predict_next_ovens(current_time)
 
-# Function to get prediction for a specific oven
-def get_oven_prediction(oven, chickens=28):
-    current_time = datetime.now() #- timedelta(hours=23)
-    time_until_ready = predict_time_until_ready(oven, current_time, chickens)
-    if isinstance(time_until_ready, int):
-        return f"Ready in: {time_until_ready} min"
-    else:
-        return time_until_ready
-
-# Example usage for a specific oven
-print("\nPrediction for Oven 1:")
-print(get_oven_prediction(oven=1))
-
-# Print model coefficients for analysis
-print("\nModel coefficients for each oven:")
-for oven, (model, encoder, imputer) in oven_models.items():
+print(f"\nCurrent time (Eastern): {current_time.strftime('%Y-%m-%d %I:%M %p')}")
+for oven, prediction in predictions.items():
     print(f"\nOven {oven}:")
-    print(f"  Intercept: {model.intercept_:.2f}")
-    print(f"  Chickens coefficient: {model.coef_[0]:.2f}")
-    feature_names = encoder.get_feature_names_out(['day_of_week', 'hour'])
-    for i, feature in enumerate(feature_names):
-        print(f"  {feature} coefficient: {model.coef_[i+1]:.2f}")
+    print(f"Predicted next finish time (Eastern): {prediction['next_time'].strftime('%Y-%m-%d %I:%M %p')}")
+    print(f"Predicted leftovers: {prediction['leftovers']:.2f}")
+    
+    print("\nTime Prediction Feature Importance:")
+    for feature, importance in prediction['time_importance'].items():
+        print(f"  {feature}: {importance:.4f}")
+    
+    print("\nLeftovers Prediction Feature Importance:")
+    for feature, importance in prediction['leftovers_importance'].items():
+        print(f"  {feature}: {importance:.4f}")
+    
+    print("\nMost Similar Historical Data Points:")
+    for i, (data_point, time, leftovers) in enumerate(zip(prediction['similar_data'], prediction['similar_times'], prediction['similar_leftovers']), 1):
+        print(f"  {i}. Input: Hour={data_point[0]}, Minute={data_point[1]}, Day={data_point[2]}")
+        print(f"     Output: Time to next finish={time:.2f} minutes, Leftovers={leftovers:.2f}")
 
-# Print column names and first few rows for debugging
-print("\nColumns in the DataFrame:")
-print(data.columns.tolist())
-print("\nFirst few rows of the DataFrame:")
-print(data.head())
-
-# Print information about NaN values
-print("\nNaN values in each column:")
-print(data.isna().sum())
-
-# Print data types of each column
-print("\nData types of each column:")
-print(data.dtypes)

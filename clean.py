@@ -57,7 +57,7 @@ sessions = []
 
 # Iterate through each oven
 for oven in data_filtered['oven'].unique():
-    oven_data = data_filtered[data_filtered['oven'] == oven]
+    oven_data = data_filtered[data_filtered['oven'] == oven].sort_values('timestamp')
     current_session = None
     
     for _, row in oven_data.iterrows():
@@ -68,7 +68,9 @@ for oven in data_filtered['oven'].unique():
                 'oven': oven,
                 'start_time': row['timestamp'],
                 'chickens': row['chickens'],
-                'expected_end_time': row['expected_end_time']
+                'expected_end_time': row['expected_end_time'],
+                'leftovers': None,
+                'leftovers_time': None
             }
         elif row['action'] == 'adjust_cooking_time' and current_session is not None:
             if pd.notnull(row['new_expected_end_time']):
@@ -80,48 +82,72 @@ for oven in data_filtered['oven'].unique():
                     'oven': oven,
                     'start_time': row['timestamp'] - timedelta(minutes=90),
                     'chickens': row['chickens'],
-                    'expected_end_time': row['timestamp']  # Assume expected = actual if we don't have start data
+                    'expected_end_time': row['timestamp'],  # Assume expected = actual if we don't have start data
+                    'leftovers': None,
+                    'leftovers_time': None
                 }
             current_session['end_time'] = row['timestamp']
             current_session['actual_cooking_time'] = (current_session['end_time'] - current_session['start_time']).total_seconds() / 60
+            
+            # Adjust start time if cooking duration is less than 60 minutes
+            if current_session['actual_cooking_time'] < 60:
+                imputed_duration = np.random.uniform(90, 100)  # Random duration between 90-100 minutes
+                current_session['start_time'] = current_session['end_time'] - timedelta(minutes=imputed_duration)
+                current_session['actual_cooking_time'] = imputed_duration
+            
             current_session['time_difference'] = (current_session['end_time'] - current_session['expected_end_time']).total_seconds() / 60
-            sessions.append(current_session)
-            current_session = None
+        elif row['action'] == 'post_rush':
+            if current_session is not None:
+                current_session['leftovers'] = row['chickens_left']
+                current_session['leftovers_time'] = row['timestamp']
+                sessions.append(current_session)
+                current_session = None
+
+    # Append the last session if it exists
+    if current_session is not None:
+        sessions.append(current_session)
 
 # Create a DataFrame from the sessions
 cooking_sessions = pd.DataFrame(sessions)
 
-# Sort the dataframe
-cooking_sessions = cooking_sessions.sort_values(['start_time', 'oven'])
+# Calculate time between end_time and leftovers_time
+cooking_sessions['time_to_leftovers'] = (cooking_sessions['leftovers_time'] - cooking_sessions['end_time']).dt.total_seconds() / 60
 
-# Add date column for grouping
-cooking_sessions['date'] = cooking_sessions['start_time'].dt.date
+# Add new analysis for leftovers
+print("\nLeftovers Analysis:")
+sessions_with_leftovers = cooking_sessions[cooking_sessions['leftovers'].notnull()]
+print(f"Total sessions with leftovers: {len(sessions_with_leftovers)}")
 
-# Highlight sessions without finish times
-sessions_without_finish = cooking_sessions[cooking_sessions['end_time'].isnull()]
-print("\nSessions without finish times:")
-print(sessions_without_finish[['oven', 'start_time', 'chickens']])
-print(f"\nTotal sessions without finish times: {len(sessions_without_finish)}")
+print("\nLeftovers statistics:")
+print(sessions_with_leftovers['leftovers'].describe())
 
-# Group by date and oven
-grouped_sessions = cooking_sessions.groupby(['date', 'oven'])
+print("\nTime to log leftovers statistics (minutes):")
+print(sessions_with_leftovers['time_to_leftovers'].describe())
 
-# Create a formatted output
+print("\nSample of sessions with leftovers:")
+print(sessions_with_leftovers[['oven', 'end_time', 'chickens', 'leftovers', 'leftovers_time', 'time_to_leftovers']].head())
+
+# Update the formatted output to include leftovers information
 output = []
-for (date, oven), group in grouped_sessions:
+for (date, oven), group in cooking_sessions.groupby([cooking_sessions['start_time'].dt.date, 'oven']):
     output.append(f"\nDate: {date}, Oven: {oven}")
     for _, session in group.iterrows():
         start = session['start_time'].strftime('%I:%M %p')
         end = session['end_time'].strftime('%I:%M %p') if pd.notnull(session['end_time']) else 'N/A'
         cooking_time = f"{session['actual_cooking_time']:.2f}" if pd.notnull(session['actual_cooking_time']) else 'N/A'
         time_diff = f"{session['time_difference']:.2f}" if pd.notnull(session['time_difference']) else 'N/A'
-        session_info = f"  {start} - {end}: {session['chickens']} chickens, {cooking_time} minutes, Difference: {time_diff} minutes"
+        leftovers = f"{session['leftovers']}" if pd.notnull(session['leftovers']) else 'N/A'
+        leftovers_time = session['leftovers_time'].strftime('%I:%M %p') if pd.notnull(session['leftovers_time']) else 'N/A'
+        time_to_leftovers = f"{session['time_to_leftovers']:.2f}" if pd.notnull(session['time_to_leftovers']) else 'N/A'
+        session_info = (f"  {start} - {end}: {session['chickens']} chickens, {cooking_time} minutes, "
+                        f"Difference: {time_diff} minutes, Leftovers: {leftovers} at {leftovers_time} "
+                        f"({time_to_leftovers} minutes after finish)")
         if pd.isnull(session['end_time']):
             session_info += " (No finish time)"
         output.append(session_info)
 
-# Print the formatted output
-print("\nCooking Sessions:")
+# Print the updated formatted output
+print("\nCooking Sessions (including detailed leftovers information):")
 print("\n".join(output))
 
 # Save the grouped sessions to a CSV file
