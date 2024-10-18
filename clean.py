@@ -25,14 +25,14 @@ for col in datetime_columns:
         data[col] = data[col].apply(safe_to_datetime)
         data[col] = data[col].apply(convert_to_eastern)
 
-# Identify duplicates
-duplicates = data[data.duplicated(keep=False)]
+# Identify and remove duplicates based on 'oven' and 'timestamp'
+duplicates = data[data.duplicated(subset=['oven', 'timestamp'], keep=False)]
 print("Duplicates found:")
 print(duplicates)
 print(f"\nNumber of duplicates: {len(duplicates)}")
 
-# Remove duplicates
-data_no_duplicates = data.drop_duplicates()
+# Remove duplicates, keeping the first occurrence
+data_no_duplicates = data.drop_duplicates(subset=['oven', 'timestamp'], keep='first')
 
 # Filter out entries before Oct 3, 10 AM EST
 cutoff_time = pd.Timestamp('2024-10-03 10:00:00', tz='US/Eastern')
@@ -68,12 +68,11 @@ for oven in data_filtered['oven'].unique():
                 'oven': oven,
                 'start_time': row['timestamp'],
                 'chickens': row['chickens'],
-                'estimated_end_time': row['timestamp'] + timedelta(minutes=90)
+                'expected_end_time': row['expected_end_time']
             }
         elif row['action'] == 'adjust_cooking_time' and current_session is not None:
-            if pd.notnull(row['new_time_left']):
-                current_session['estimated_end_time'] = row['timestamp'] + timedelta(minutes=row['new_time_left'])
-                current_session['start_time'] = current_session['estimated_end_time'] - timedelta(minutes=90)
+            if pd.notnull(row['new_expected_end_time']):
+                current_session['expected_end_time'] = row['new_expected_end_time']
         elif row['action'] == 'finish_cooking':
             if current_session is None:
                 # If we have a finish time without a start time, estimate the start time
@@ -81,9 +80,11 @@ for oven in data_filtered['oven'].unique():
                     'oven': oven,
                     'start_time': row['timestamp'] - timedelta(minutes=90),
                     'chickens': row['chickens'],
+                    'expected_end_time': row['timestamp']  # Assume expected = actual if we don't have start data
                 }
             current_session['end_time'] = row['timestamp']
             current_session['actual_cooking_time'] = (current_session['end_time'] - current_session['start_time']).total_seconds() / 60
+            current_session['time_difference'] = (current_session['end_time'] - current_session['expected_end_time']).total_seconds() / 60
             sessions.append(current_session)
             current_session = None
 
@@ -96,6 +97,12 @@ cooking_sessions = cooking_sessions.sort_values(['start_time', 'oven'])
 # Add date column for grouping
 cooking_sessions['date'] = cooking_sessions['start_time'].dt.date
 
+# Highlight sessions without finish times
+sessions_without_finish = cooking_sessions[cooking_sessions['end_time'].isnull()]
+print("\nSessions without finish times:")
+print(sessions_without_finish[['oven', 'start_time', 'chickens']])
+print(f"\nTotal sessions without finish times: {len(sessions_without_finish)}")
+
 # Group by date and oven
 grouped_sessions = cooking_sessions.groupby(['date', 'oven'])
 
@@ -106,8 +113,12 @@ for (date, oven), group in grouped_sessions:
     for _, session in group.iterrows():
         start = session['start_time'].strftime('%I:%M %p')
         end = session['end_time'].strftime('%I:%M %p') if pd.notnull(session['end_time']) else 'N/A'
-        cooking_time = f"{session['actual_cooking_time']:.2f}" if 'actual_cooking_time' in session and pd.notnull(session['actual_cooking_time']) else 'N/A'
-        output.append(f"  {start} - {end}: {session['chickens']} chickens, {cooking_time} minutes")
+        cooking_time = f"{session['actual_cooking_time']:.2f}" if pd.notnull(session['actual_cooking_time']) else 'N/A'
+        time_diff = f"{session['time_difference']:.2f}" if pd.notnull(session['time_difference']) else 'N/A'
+        session_info = f"  {start} - {end}: {session['chickens']} chickens, {cooking_time} minutes, Difference: {time_diff} minutes"
+        if pd.isnull(session['end_time']):
+            session_info += " (No finish time)"
+        output.append(session_info)
 
 # Print the formatted output
 print("\nCooking Sessions:")
@@ -129,3 +140,8 @@ print(f"Start: {cooking_sessions['start_time'].min()}")
 print(f"End: {cooking_sessions['end_time'].max()}")
 
 print("\nTotal number of sessions:", len(cooking_sessions))
+
+# Add statistics for time difference
+print("\nTime Difference Statistics (minutes):")
+print(cooking_sessions['time_difference'].describe())
+

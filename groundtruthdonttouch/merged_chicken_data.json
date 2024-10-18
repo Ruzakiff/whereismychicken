@@ -1,5 +1,367 @@
 [
   {
+    "action": "finish_cooking",
+    "oven": 3,
+    "chickens": 32,
+    "start_time": "12:57:36 PM",
+    "expected_end_time": "2:27:36 PM",
+    "actual_end_time": "2024-10-03T18:48:27.875Z",
+    "timestamp": "2024-10-03T18:48:28.023613"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 2,
+    "chickens": 32,
+    "start_time": "12:57:41 PM",
+    "expected_end_time": "2:27:41 PM",
+    "actual_end_time": "2024-10-03T18:48:30.889Z",
+    "timestamp": "2024-10-03T18:48:31.050991"
+  },
+  {
+    "action": "post_rush",
+    "oven": 2,
+    "chickens_taken": 12,
+    "chickens_left": 20,
+    "time": "2024-10-03T19:03:02.208Z",
+    "timestamp": "2024-10-03T19:03:02.471265"
+  },
+  {
+    "action": "post_rush",
+    "oven": 3,
+    "chickens_taken": 0,
+    "chickens_left": 32,
+    "time": "2024-10-03T19:03:13.657Z",
+    "timestamp": "2024-10-03T19:03:13.927549"
+  },
+  {
+    "action": "start_cooking",
+    "oven": 1,
+    "chickens": 28,
+    "start_time": "2024-10-03T19:03:30.312Z",
+    "expected_end_time": "2024-10-03T20:33:30.312Z",
+    "timestamp": "2024-10-03T19:03:30.566972"
+  },
+  {
+    "action": "start_cooking",
+    "oven": 2,
+    "chickens": 32,
+    "start_time": "2024-10-03T19:03:33.405Z",
+    "expected_end_time": "2024-10-03T20:33:33.405Z",
+    "timestamp": "2024-10-03T19:03:33.563662"
+  },
+  {
+    "action": "start_cooking",
+    "oven": 3,
+    "chickens": 32,
+    "start_time": "2024-10-03T19:03:35.088Z",
+    "expected_end_time": "2024-10-03T20:33:35.088Z",
+    "timestamp": "2024-10-03T19:03:35.227174"
+  },
+  {
+    "action": "post_rush",
+    "oven": 1,
+    "chickens_taken": 28,
+    "chickens_left": 0,
+    "time": "2024-10-03T19:07:28.477Z",
+    "timestamp": "2024-10-03T19:07:28.751186"
+  },
+  {
+    "action": "start_cooking",
+    "oven": 1,
+    "chickens": 28,
+    "start_time": "2024-10-03T20:11:45.784Z",
+    "expected_end_time": "2024-10-03T21:41:45.784Z",
+    "timestamp": "2024-10-03T20:11:46.005644"
+  },
+  {
+    "action": "adjust_cooking_time",
+    "oven": 1,
+    "new_time_left": 30,
+    "new_expected_end_time": "2024-10-03T20:41:54.098Z",
+    "timestamp": "2024-10-03T20:11:54.305930"
+  },
+  {
+    "action": "adjust_cooking_time",
+    "oven": 1,
+    "new_time_left": 15,
+    "new_expected_end_time": "2024-10-03T20:27:02.398Z",
+    "timestamp": "2024-10-03T20:12:02.484518"
+  },
+  {
+    "action": "start_cooking",
+    "oven": 1,
+    "chickens": 28,
+    "start_time": "2024-10-03T20:12:08.745Z",
+    "expected_end_time": "2024-10-03T21:42:08.745Z",
+    "timestamp": "2024-10-03T20:12:08.950854"
+  },
+  {
+    "action": "adjust_cooking_time",
+    "oven": 1,
+    "new_time_left": 15,
+    "new_expected_end_time": "2024-10-03T20:27:11.111Z",
+    "timestamp": "2024-10-03T20:12:11.190046"
+  },
+  {
+    "action": "start_cooking",
+    "oven": 1,
+    "chickens": 28,
+    "start_time": "2024-10-03T20:12:35.685Z",
+    "expected_end_time": "2024-10-03T21:42:35.685Z",
+    "timestamp": "2024-10-03T20:12:35.885526"
+  },
+  {
+    "action": "adjust_cooking_time",
+    "oven": 1,
+    "new_time_left": 15,
+    "new_expected_end_time": "2024-10-03T20:27:41.431Z",
+    "timestamp": "2024-10-03T20:12:41.517120"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 4,
+    "chickens": 28,
+    "start_time": "Invalid Date",
+    "expected_end_time": "Invalid Date",
+    "actual_end_time": "2024-10-03T20:12:52.612Z",
+    "timestamp": "2024-10-03T20:12:52.786671"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 4,
+    "chickens": 28,
+    "start_time": "Invalid Date",
+    "expected_end_time": "Invalid Date",
+    "actual_end_time": "2024-10-03T20:12:53.211Z",
+    "timestamp": "2024-10-03T20:12:53.292809"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 2,
+    "chickens": 32,
+    "start_time": "3:03:33 PM",
+    "expected_end_time": "4:33:33 PM",
+    "actual_end_time": "2024-10-03T20:21:24.500Z",
+    "timestamp": "2024-10-03T20:21:24.729707"
+  },
+  {
+    "action": "post_rush",
+    "oven": 4,
+    "chickens_taken": null,
+    "chickens_left": null,
+    "time": "2024-10-03T20:21:54.813Z",
+    "timestamp": "2024-10-03T20:21:55.014882"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 2,
+    "chickens": 32,
+    "start_time": "Invalid Date",
+    "expected_end_time": "Invalid Date",
+    "actual_end_time": "2024-10-03T20:26:58.551Z",
+    "timestamp": "2024-10-03T20:26:58.812589"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 2,
+    "chickens": 32,
+    "start_time": "Invalid Date",
+    "expected_end_time": "Invalid Date",
+    "actual_end_time": "2024-10-03T20:30:35.215Z",
+    "timestamp": "2024-10-03T20:30:35.431813"
+  },
+  {
+    "action": "post_rush",
+    "oven": 2,
+    "chickens_taken": 32,
+    "chickens_left": 0,
+    "time": "2024-10-03T20:30:42.300Z",
+    "timestamp": "2024-10-03T20:30:42.515032"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 3,
+    "chickens": 32,
+    "start_time": "3:03:35 PM",
+    "expected_end_time": "4:33:35 PM",
+    "actual_end_time": "2024-10-03T20:45:39.684Z",
+    "timestamp": "2024-10-03T20:45:39.939039"
+  },
+  {
+    "action": "post_rush",
+    "oven": 3,
+    "chickens_taken": 27,
+    "chickens_left": 5,
+    "time": "2024-10-03T21:06:16.072Z",
+    "timestamp": "2024-10-03T21:06:16.301217"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 1,
+    "chickens": 28,
+    "start_time": "Invalid Date",
+    "expected_end_time": "4:27:41 PM",
+    "actual_end_time": "2024-10-03T21:20:24.091Z",
+    "timestamp": "2024-10-03T21:20:24.364798"
+  },
+  {
+    "action": "post_rush",
+    "oven": 1,
+    "chickens_taken": 18,
+    "chickens_left": 10,
+    "time": "2024-10-03T21:20:32.635Z",
+    "timestamp": "2024-10-03T21:20:32.782782"
+  },
+  {
+    "action": "start_cooking",
+    "oven": 1,
+    "chickens": 28,
+    "start_time": "2024-10-03T21:20:33.949Z",
+    "expected_end_time": "2024-10-03T22:50:33.949Z",
+    "timestamp": "2024-10-03T21:20:34.035457"
+  },
+  {
+    "action": "adjust_cooking_time",
+    "oven": 1,
+    "new_time_left": 70,
+    "new_expected_end_time": "2024-10-03T22:30:38.451Z",
+    "timestamp": "2024-10-03T21:20:38.535847"
+  },
+  {
+    "action": "start_cooking",
+    "oven": 1,
+    "chickens": 32,
+    "start_time": "2024-10-04T01:46:14.755Z",
+    "expected_end_time": "2024-10-04T03:16:14.755Z",
+    "timestamp": "2024-10-03T21:46:14.986957"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 1,
+    "chickens": 32,
+    "start_time": "9:46:14 PM",
+    "expected_end_time": "11:16:14 PM",
+    "actual_end_time": "2024-10-04T01:46:26.285Z",
+    "timestamp": "2024-10-03T21:46:26.512022"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 3,
+    "chickens": 0,
+    "start_time": "-",
+    "expected_end_time": "-",
+    "actual_end_time": "2024-10-04T01:46:33.590Z",
+    "timestamp": "2024-10-03T21:46:37.318574"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 2,
+    "chickens": 0,
+    "start_time": "-",
+    "expected_end_time": "-",
+    "actual_end_time": "2024-10-04T01:46:48.254Z",
+    "timestamp": "2024-10-03T21:46:48.444645"
+  },
+  {
+    "action": "start_cooking",
+    "oven": 1,
+    "chickens": 28,
+    "start_time": "2024-10-04T01:48:12.253Z",
+    "expected_end_time": "2024-10-04T03:18:12.253Z",
+    "timestamp": "2024-10-03T21:48:12.462271"
+  },
+  {
+    "action": "adjust_cooking_time",
+    "oven": 1,
+    "new_time_left": 88,
+    "new_expected_end_time": "2024-10-04T03:16:14.662Z",
+    "timestamp": "2024-10-03T21:48:14.740423"
+  },
+  {
+    "action": "start_cooking",
+    "oven": 2,
+    "chickens": 28,
+    "start_time": "2024-10-04T01:48:19.317Z",
+    "expected_end_time": "2024-10-04T03:18:19.317Z",
+    "timestamp": "2024-10-03T21:48:19.447646"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 2,
+    "chickens": 28,
+    "start_time": "9:48:19 PM",
+    "expected_end_time": "11:18:19 PM",
+    "actual_end_time": "2024-10-04T01:48:21.058Z",
+    "timestamp": "2024-10-03T21:48:21.147892"
+  },
+  {
+    "action": "post_rush",
+    "oven": 2,
+    "chickens_taken": null,
+    "chickens_left": null,
+    "time": "2024-10-04T01:48:22.849Z",
+    "timestamp": "2024-10-03T21:48:22.964630"
+  },
+  {
+    "action": "start_cooking",
+    "oven": 4,
+    "chickens": 28,
+    "start_time": "2024-10-04T01:48:25.778Z",
+    "expected_end_time": "2024-10-04T03:18:25.778Z",
+    "timestamp": "2024-10-03T21:48:25.934609"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 4,
+    "chickens": 28,
+    "start_time": "9:48:25 PM",
+    "expected_end_time": "11:18:25 PM",
+    "actual_end_time": "2024-10-04T01:48:27.015Z",
+    "timestamp": "2024-10-03T21:48:27.425780"
+  },
+  {
+    "action": "post_rush",
+    "oven": 4,
+    "chickens_taken": null,
+    "chickens_left": null,
+    "time": "2024-10-04T01:48:28.330Z",
+    "timestamp": "2024-10-03T21:48:28.486937"
+  },
+  {
+    "action": "start_cooking",
+    "oven": 4,
+    "chickens": 28,
+    "start_time": "2024-10-04T01:48:29.533Z",
+    "expected_end_time": "2024-10-04T03:18:29.533Z",
+    "timestamp": "2024-10-03T21:48:29.680122"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 4,
+    "chickens": 28,
+    "start_time": "9:48:29 PM",
+    "expected_end_time": "11:18:29 PM",
+    "actual_end_time": "2024-10-04T01:48:31.054Z",
+    "timestamp": "2024-10-03T21:48:31.165924"
+  },
+  {
+    "action": "finish_cooking",
+    "oven": 1,
+    "chickens": 28,
+    "start_time": "Invalid Date",
+    "expected_end_time": "6:30:38 PM",
+    "actual_end_time": "2024-10-03T23:54:51.083Z",
+    "timestamp": "2024-10-03T23:54:51.299840"
+  },
+  {
+    "action": "post_rush",
+    "oven": 1,
+    "chickens_taken": 18,
+    "chickens_left": 10,
+    "time": "2024-10-03T23:54:53.364Z",
+    "timestamp": "2024-10-03T23:54:53.446510"
+  },
+  {
     "action": "start_cooking",
     "oven": 2,
     "chickens": 32,
@@ -301,15 +663,6 @@
     "start_time": "2024-10-05T17:43:59.142Z",
     "expected_end_time": "2024-10-05T19:13:59.142Z",
     "timestamp": "2024-10-05T17:43:59.209173"
-  },
-  {
-    "action": "finish_cooking",
-    "oven": 1,
-    "chickens": 32,
-    "start_time": "12:19:46 PM",
-    "expected_end_time": "2:10:01 PM",
-    "actual_end_time": "2024-10-05T18:10:00.000Z",
-    "timestamp": "2024-10-05T18:10:55.315275"
   },
   {
     "action": "finish_cooking",
