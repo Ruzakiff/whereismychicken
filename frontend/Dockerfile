@@ -12,4 +12,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 5000
 # Set the environment variable for Flask
 
-CMD ["python3","application.py"]
+CMD ["python3","backend.py"]
