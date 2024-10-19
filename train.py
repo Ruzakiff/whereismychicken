@@ -142,3 +142,4 @@ for oven, prediction in predictions.items():
         print(f"  {i}. Input: Hour={data_point[0]}, Minute={data_point[1]}, Day={data_point[2]}")
         print(f"     Output: Time to next finish={time:.2f} minutes, Leftovers={leftovers:.2f}")
 
+

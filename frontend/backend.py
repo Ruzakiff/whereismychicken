@@ -25,6 +25,46 @@ def find_similar_datapoints(X, current_data, n_neighbors=3):
     distances, indices = nbrs.kneighbors([current_data])
     return indices[0]
 
+# Function to check if a given time is within operating hours
+def is_within_operating_hours(time):
+    day_of_week = time.weekday()
+    hour = time.hour
+    
+    operating_hours = {
+        0: (10, 20),  # Monday
+        1: (10, 20),  # Tuesday
+        2: (10, 20),  # Wednesday
+        3: (10, 20),  # Thursday
+        4: (10, 20),  # Friday
+        5: (9, 20),   # Saturday
+        6: (10, 18)   # Sunday
+    }
+    
+    open_hour, close_hour = operating_hours[day_of_week]
+    return open_hour <= hour < close_hour
+
+# Function to get the next open time
+def get_next_open_time(current_time):
+    while not is_within_operating_hours(current_time):
+        current_time += timedelta(hours=1)
+        current_time = current_time.replace(minute=0, second=0, microsecond=0)
+    return current_time
+
+# Function to get closing time
+def get_closing_time(current_time):
+    day_of_week = current_time.weekday()
+    operating_hours = {
+        0: (10, 20),  # Monday
+        1: (10, 20),  # Tuesday
+        2: (10, 20),  # Wednesday
+        3: (10, 20),  # Thursday
+        4: (10, 20),  # Friday
+        5: (9, 20),   # Saturday
+        6: (10, 18)   # Sunday
+    }
+    _, close_hour = operating_hours[day_of_week]
+    return current_time.replace(hour=close_hour, minute=0, second=0, microsecond=0)
+
 # Function to predict next oven time and leftovers for all ovens
 def predict_next_ovens(current_time):
     hour = current_time.hour
@@ -59,19 +99,76 @@ def predict_next_ovens(current_time):
     
     return predictions
 
+# Function to format predictions based on operating hours
+def format_predictions(predictions, current_time):
+    formatted_predictions = {}
+    closing_time = get_closing_time(current_time)
+    time_to_close = (closing_time - current_time).total_seconds() / 60  # in minutes
+
+    if is_within_operating_hours(current_time):
+        if time_to_close <= 30:  # If within 30 minutes of closing
+            last_batch = find_last_batch(predictions)
+            if last_batch:
+                for oven, prediction in last_batch.items():
+                    formatted_predictions[oven] = {
+                        'next_time': None,
+                        'leftovers': prediction['leftovers'],
+                        'message': f"Last batch: {prediction['leftovers']:.0f} leftovers, {time_to_close:.0f} minutes until close"
+                    }
+            else:
+                for oven in predictions:
+                    formatted_predictions[oven] = {
+                        'next_time': None,
+                        'leftovers': None,
+                        'message': f"No recent batches, {time_to_close:.0f} minutes until close"
+                    }
+        else:
+            for oven, prediction in predictions.items():
+                if is_within_operating_hours(prediction['next_time']):
+                    formatted_predictions[oven] = prediction
+                else:
+                    formatted_predictions[oven] = {
+                        'next_time': None,
+                        'leftovers': None,
+                        'message': "No more ovens expected to finish before closing time"
+                    }
+    else:
+        next_open_time = get_next_open_time(current_time)
+        for oven in predictions:
+            formatted_predictions[oven] = {
+                'next_time': None,
+                'leftovers': None,
+                'message': f"Closed. Opens at {next_open_time.strftime('%I:%M %p')} on {next_open_time.strftime('%A')}"
+            }
+    return formatted_predictions
+
+def find_last_batch(predictions):
+    last_batch = {}
+    latest_time = datetime.min.replace(tzinfo=pytz.UTC)
+    for oven, prediction in predictions.items():
+        if prediction['next_time'] > latest_time:
+            latest_time = prediction['next_time']
+            last_batch = {oven: prediction}
+        elif prediction['next_time'] == latest_time:
+            last_batch[oven] = prediction
+    return last_batch if last_batch else None
+
 @app.route('/predict', methods=['GET'])
 def get_predictions():
     eastern = pytz.timezone('US/Eastern')
     current_time = datetime.now(eastern)
-    predictions = predict_next_ovens(current_time)
+    raw_predictions = predict_next_ovens(current_time)
+    formatted_predictions = format_predictions(raw_predictions, current_time)
     
     # Convert datetime objects to strings for JSON serialization
-    for oven, pred in predictions.items():
-        pred['next_time'] = pred['next_time'].isoformat()
+    for oven, pred in formatted_predictions.items():
+        if pred['next_time'] is not None:
+            pred['next_time'] = pred['next_time'].isoformat()
     
     return jsonify({
         'current_time': current_time.isoformat(),
-        'predictions': predictions
+        'is_open': is_within_operating_hours(current_time),
+        'predictions': formatted_predictions
     })
 
 if __name__ == '__main__':
