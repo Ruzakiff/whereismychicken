@@ -26,9 +26,14 @@ def get_opening_time(date):
         opening_time = time(8, 0)
     naive_datetime = datetime.combine(date, opening_time)
     return eastern.localize(naive_datetime)
-
 def get_closing_time(date):
-    closing_time = time(22, 0)  # 10 PM closing time
+    day_of_week = date.weekday()
+    if day_of_week == 5:  # Saturday
+        closing_time = time(20, 0)  # 8 PM
+    elif day_of_week == 6:  # Sunday
+        closing_time = time(18, 0)  # 6 PM
+    else:  # Monday to Friday
+        closing_time = time(20, 0)  # 8 PM
     naive_datetime = datetime.combine(date, closing_time)
     return eastern.localize(naive_datetime)
 
