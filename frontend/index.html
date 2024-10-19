@@ -16,15 +16,22 @@
         }
         .container {
             text-align: center;
+            position: relative;
+            top: -15vh;
         }
         h1 {
             font-size: 2.5em;
-            margin-bottom: 0.5em;
+            margin-bottom: 1em;
         }
         .time {
             font-size: 4em;
             font-weight: bold;
             color: #4a4a4a;
+        }
+        .eastern-time {
+            font-size: 1.5em;
+            color: #666;
+            margin-top: 0.5em;
         }
         .details-btn {
             margin-top: 1em;
@@ -37,17 +44,62 @@
 <body>
     <div class="container">
         <h1>How Long for Chicken?</h1>
-        <div class="time" id="next-chicken-time">25 min</div>
+        <div class="time" id="countdown"></div>
+        <div class="eastern-time" id="eastern-time"></div>
         <button class="details-btn" onclick="showDetails()">See Oven Details</button>
     </div>
 
     <script>
+        let targetTime = null;
+
         function showDetails() {
-            // This function would show a modal or navigate to a page with detailed oven information
             alert("Oven details would be shown here");
         }
 
-        // You'd add more JavaScript here to update the time dynamically
+        function updateCountdown() {
+            if (!targetTime) {
+                fetchPrediction();
+                return;
+            }
+
+            const now = new Date();
+            const timeDiff = targetTime - now;
+
+            if (timeDiff <= 0) {
+                fetchPrediction();
+                return;
+            }
+
+            const minutes = Math.floor(timeDiff / 60000);
+            const seconds = Math.floor((timeDiff % 60000) / 1000);
+
+            document.getElementById('countdown').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function fetchPrediction() {
+            fetch('/predict')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.earliest_time) {
+                        targetTime = new Date(data.earliest_time);
+                        document.getElementById('eastern-time').textContent = targetTime.toLocaleTimeString('en-US', { timeZone: 'America/New_York' });
+                    } else {
+                        document.getElementById('countdown').textContent = "No prediction available";
+                        document.getElementById('eastern-time').textContent = "";
+                        targetTime = null;
+                    }
+                });
+        }
+
+        // Initial fetch
+        fetchPrediction();
+
+        // Update countdown every second
+        setInterval(updateCountdown, 1000);
+
+        // Fetch new prediction every minute (in case the prediction has changed)
+        setInterval(fetchPrediction, 60000);
     </script>
 </body>
 </html>
+
