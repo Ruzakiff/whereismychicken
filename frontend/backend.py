@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 import pickle
 from datetime import datetime, timedelta, time
 import pytz
@@ -26,14 +26,9 @@ def get_opening_time(date):
         opening_time = time(8, 0)
     naive_datetime = datetime.combine(date, opening_time)
     return eastern.localize(naive_datetime)
+
 def get_closing_time(date):
-    day_of_week = date.weekday()
-    if day_of_week == 5:  # Saturday
-        closing_time = time(20, 0)  # 8 PM
-    elif day_of_week == 6:  # Sunday
-        closing_time = time(18, 0)  # 6 PM
-    else:  # Monday to Friday
-        closing_time = time(20, 0)  # 8 PM
+    closing_time = time(22, 0)  # 10 PM closing time
     naive_datetime = datetime.combine(date, closing_time)
     return eastern.localize(naive_datetime)
 
@@ -59,7 +54,7 @@ def predict_using_ml(prediction_time):
     
     return earliest_time
 
-def predict_next_oven_time(current_time):
+def predict_next_oven_time(current_time, force_new_prediction=False):
     global last_ml_prediction_time, current_prediction
 
     opening_time = get_opening_time(current_time.date())
@@ -67,16 +62,10 @@ def predict_next_oven_time(current_time):
     if current_time < opening_time:
         return opening_time
 
-    if last_ml_prediction_time is None or current_time >= current_prediction:
-        # Backtrack to find the correct prediction
-        prediction_time = opening_time
-        while True:
-            next_oven_time = predict_using_ml(prediction_time)
-            if next_oven_time > current_time:
-                current_prediction = next_oven_time
-                last_ml_prediction_time = prediction_time
-                break
-            prediction_time = next_oven_time
+    if force_new_prediction or last_ml_prediction_time is None or current_time >= current_prediction:
+        next_oven_time = predict_using_ml(current_time)
+        last_ml_prediction_time = current_time
+        current_prediction = next_oven_time
 
     return current_prediction
 
@@ -95,6 +84,35 @@ def get_predictions():
         'earliest_time': next_oven_time.isoformat() if next_oven_time else None
     })
 
+@app.route('/report-actual-time', methods=['POST'])
+def report_actual_time():
+    app.logger.info('Received request to /report-actual-time')
+    data = request.json
+    app.logger.info(f'Received data: {data}')
+    actual_time = datetime.fromisoformat(data['actual_time'])
+    current_time = datetime.now(eastern)
+    
+    if actual_time > current_time:
+        # Reported time is in the future (next expected batch)
+        next_oven_time = actual_time
+        message = 'Future time set directly'
+    else:
+        # Reported time is in the past (last batch that came out)
+        # Force a new prediction based on the reported time
+        next_oven_time = predict_next_oven_time(actual_time, force_new_prediction=True)
+        message = 'New prediction based on past time'
+    
+    global current_prediction, last_ml_prediction_time
+    current_prediction = next_oven_time
+    last_ml_prediction_time = actual_time
+    
+    app.logger.info(f'New prediction set: {current_prediction.isoformat()}')
+    
+    return jsonify({
+        'status': 'success', 
+        'new_prediction': current_prediction.isoformat(),
+        'message': message
+    })
+
 if __name__ == '__main__':
-    app.logger.info('Application starting')
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(debug=True)

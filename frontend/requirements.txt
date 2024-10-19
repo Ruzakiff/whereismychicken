@@ -4,3 +4,5 @@ apscheduler
 pytz
 numpy
 datetime
+scikit-learn==1.5.2
+scipy==1.14.1
