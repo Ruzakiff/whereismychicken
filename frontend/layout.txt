@@ -1,0 +1,14 @@
+This simplified version:
+1. Focuses on the main question: "How Long for Chicken?"
+2. Displays a large, easy-to-read time for when the next batch of chicken will be ready.
+3. Includes a button to access more detailed information about specific ovens if needed.
+Key points:
+The main screen is extremely simple and answers the primary question at a glance.
+The "See Oven Details" button allows access to more specific information without cluttering the main view.
+The design is clean and readable, suitable for quick glances in a busy kitchen environment.
+To implement this:
+1. The main time displayed would be the shortest time among all ovens.
+2. You'd need JavaScript to periodically update this time, fetching data from your backend.
+3. The "See Oven Details" button could open a modal or navigate to another page showing the status of each oven, including predicted finish times and leftovers.
+4. You could add simple color coding (e.g., green when time > 30 min, yellow for 10-30 min, red for < 10 min) to give a quick visual cue of urgency.
+This approach maintains simplicity for ease of use while still allowing access to more detailed information when needed. It's suitable for all users, including older staff members, while still providing the option for more in-depth data for those who need it.

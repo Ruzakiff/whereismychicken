@@ -6,6 +6,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.neighbors import NearestNeighbors
 import pytz
+import pickle
 
 # Load the data
 data = pd.read_csv('grouped_cooking_sessions.csv', parse_dates=['start_time', 'expected_end_time', 'leftovers_time', 'end_time'])
@@ -77,6 +78,10 @@ for oven in ovens:
 
     models[oven] = {'time': rf_time, 'leftovers': rf_leftovers}
 
+# Save the models and oven_data_dict
+with open('chicken_models.pkl', 'wb') as f:
+    pickle.dump({'models': models, 'oven_data_dict': oven_data_dict}, f)
+
 # Function to predict next oven time and leftovers for all ovens
 def predict_next_ovens(current_time):
     hour = current_time.hour
@@ -131,6 +136,9 @@ for oven, prediction in predictions.items():
     
     print("\nMost Similar Historical Data Points:")
     for i, (data_point, time, leftovers) in enumerate(zip(prediction['similar_data'], prediction['similar_times'], prediction['similar_leftovers']), 1):
+        print(f"  {i}. Input: Hour={data_point[0]}, Minute={data_point[1]}, Day={data_point[2]}")
+        print(f"     Output: Time to next finish={time:.2f} minutes, Leftovers={leftovers:.2f}")
+
         print(f"  {i}. Input: Hour={data_point[0]}, Minute={data_point[1]}, Day={data_point[2]}")
         print(f"     Output: Time to next finish={time:.2f} minutes, Leftovers={leftovers:.2f}")
 
