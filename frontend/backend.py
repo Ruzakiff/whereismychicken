@@ -17,6 +17,7 @@ eastern = pytz.timezone('US/Eastern')
 current_prediction = None
 last_ml_prediction_time = None
 CYCLE_DURATION = timedelta(minutes=90)
+LAST_BATCH_BUFFER = timedelta(minutes=20)  # No batches in last 30 minutes
 
 def get_opening_time(date):
     day_of_week = date.weekday()
@@ -28,9 +29,15 @@ def get_opening_time(date):
     return eastern.localize(naive_datetime)
 
 def get_closing_time(date):
-    closing_time = time(22, 0)  # 10 PM closing time
+    if date.weekday() == 6:  # Sunday
+        closing_time = time(18, 0)  # 6 PM closing time on Sundays
+    else:
+        closing_time = time(20, 0)  # 8 PM closing time for other days
     naive_datetime = datetime.combine(date, closing_time)
     return eastern.localize(naive_datetime)
+
+def get_last_batch_time(date):
+    return get_closing_time(date) - LAST_BATCH_BUFFER
 
 def is_within_operating_hours(current_time):
     opening_time = get_opening_time(current_time.date())
@@ -54,6 +61,23 @@ def predict_using_ml(prediction_time):
     
     return earliest_time
 
+def adjust_prediction(prediction, base_time):
+    if not is_within_operating_hours(prediction):
+        next_opening = get_opening_time(prediction.date() + timedelta(days=1))
+        return next_opening
+
+    last_batch = get_last_batch_time(prediction.date())
+    if prediction > last_batch:
+        if base_time.date() == prediction.date():
+            if prediction.weekday() == 6:  # Sunday
+                return prediction  # Allow predictions within buffer on Sundays
+            else:
+                return None  # No more ovens for the day
+        else:
+            return get_opening_time(prediction.date())
+
+    return prediction
+
 def predict_next_oven_time(current_time, force_new_prediction=False):
     global last_ml_prediction_time, current_prediction
 
@@ -64,6 +88,7 @@ def predict_next_oven_time(current_time, force_new_prediction=False):
 
     if force_new_prediction or last_ml_prediction_time is None or current_time >= current_prediction:
         next_oven_time = predict_using_ml(current_time)
+        next_oven_time = adjust_prediction(next_oven_time, current_time)
         last_ml_prediction_time = current_time
         current_prediction = next_oven_time
 
@@ -81,7 +106,8 @@ def get_predictions():
     return jsonify({
         'current_time': current_time.isoformat(),
         'is_open': is_within_operating_hours(current_time),
-        'earliest_time': next_oven_time.isoformat() if next_oven_time else None
+        'earliest_time': next_oven_time.isoformat() if next_oven_time else None,
+        'is_sunday': current_time.weekday() == 6
     })
 
 @app.route('/report-actual-time', methods=['POST'])
@@ -94,7 +120,7 @@ def report_actual_time():
     
     if actual_time > current_time:
         # Reported time is in the future (next expected batch)
-        next_oven_time = actual_time
+        next_oven_time = adjust_prediction(actual_time, current_time)
         message = 'Future time set directly'
     else:
         # Reported time is in the past (last batch that came out)
@@ -106,13 +132,17 @@ def report_actual_time():
     current_prediction = next_oven_time
     last_ml_prediction_time = actual_time
     
-    app.logger.info(f'New prediction set: {current_prediction.isoformat()}')
+    app.logger.info(f'New prediction set: {current_prediction.isoformat() if current_prediction else "None"}')
     
     return jsonify({
         'status': 'success', 
-        'new_prediction': current_prediction.isoformat(),
+        'new_prediction': current_prediction.isoformat() if current_prediction else None,
         'message': message
     })
 
 if __name__ == '__main__':
-    app.run(debug=True)
+
+    app.logger.info('Application starting')
+    app.run(host='0.0.0.0', port=5000, debug=False)
+
+
