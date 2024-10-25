@@ -30,7 +30,7 @@
       margin: 10px 0;
     }
     
-    .oven .status {
+    .oven .status, .oven .leftovers {
       font-style: italic;
     }
     
@@ -47,21 +47,25 @@
         <h3>Oven 1</h3>
         <p class="time">--:--</p>
         <p class="status">Status: Idle</p>
+        <p class="leftovers">Estimated Leftovers: --</p>
       </div>
       <div class="oven" id="oven2">
         <h3>Oven 2</h3>
         <p class="time">--:--</p>
         <p class="status">Status: Idle</p>
+        <p class="leftovers">Estimated Leftovers: --</p>
       </div>
       <div class="oven" id="oven3">
         <h3>Oven 3</h3>
         <p class="time">--:--</p>
         <p class="status">Status: Idle</p>
+        <p class="leftovers">Estimated Leftovers: --</p>
       </div>
       <div class="oven" id="oven4">
         <h3>Oven 4</h3>
         <p class="time">--:--</p>
         <p class="status">Status: Idle</p>
+        <p class="leftovers">Estimated Leftovers: --</p>
       </div>
     </div>
     
@@ -76,9 +80,11 @@
             const oven = document.getElementById(`oven${i}`);
             const timeElement = oven.querySelector('.time');
             const statusElement = oven.querySelector('.status');
+            const leftoversElement = oven.querySelector('.leftovers');
             
             timeElement.textContent = data[i-1].time;
             statusElement.textContent = `Status: ${data[i-1].status}`;
+            leftoversElement.textContent = `Estimated Leftovers: ${data[i-1].leftovers}`;
             
             if (data[i-1].status === 'Active') {
               oven.classList.add('active');
@@ -89,11 +95,11 @@
         });
     }
     
-    // Update ovens every 30 seconds
-    setInterval(updateOvens, 30000);
-    
-    // Initial update
+    // Update ovens immediately when the page loads
     updateOvens();
+    
+    // Then update every 30 seconds
+    setInterval(updateOvens, 30000);
     </script>
 </body>
 </html>

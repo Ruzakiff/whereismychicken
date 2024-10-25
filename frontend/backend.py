@@ -17,8 +17,7 @@ eastern = pytz.timezone('US/Eastern')
 # Global variables
 current_prediction = None
 last_ml_prediction_time = None
-CYCLE_DURATION = timedelta(minutes=90)
-LAST_BATCH_BUFFER = timedelta(minutes=20)  # No batches in last 30 minutes
+oven_details = [{'time': '--:--', 'status': 'Idle', 'leftovers': '--'} for _ in range(4)]
 
 def get_opening_time(date):
     day_of_week = date.weekday()
@@ -38,7 +37,7 @@ def get_closing_time(date):
     return eastern.localize(naive_datetime)
 
 def get_last_batch_time(date):
-    return get_closing_time(date) - LAST_BATCH_BUFFER
+    return get_closing_time(date) - timedelta(minutes=20)  # No batches in last 30 minutes
 
 def is_within_operating_hours(current_time):
     opening_time = get_opening_time(current_time.date())
@@ -53,14 +52,22 @@ def predict_using_ml(prediction_time):
     input_data = np.array([[hour, minute, day_of_week]])
     
     earliest_time = None
-    for oven, model in models.items():
+    oven_predictions = []
+    for i, (oven, model) in enumerate(models.items()):
         time_to_next = float(model['time'].predict(input_data)[0])  # in minutes
         next_time = prediction_time + timedelta(minutes=time_to_next)
+        leftovers = float(model['leftovers'].predict(input_data)[0])
+        
+        oven_predictions.append({
+            'oven': i + 1,
+            'next_time': next_time,
+            'leftovers': round(leftovers, 2)
+        })
         
         if earliest_time is None or next_time < earliest_time:
             earliest_time = next_time
     
-    return earliest_time
+    return earliest_time, oven_predictions
 
 def adjust_prediction(prediction, base_time):
     if not is_within_operating_hours(prediction):
@@ -80,29 +87,43 @@ def adjust_prediction(prediction, base_time):
     return prediction
 
 def predict_next_oven_time(force_new_prediction=False):
-    global last_ml_prediction_time, current_prediction
+    global last_ml_prediction_time, current_prediction, oven_details
 
-    # Get current time in Eastern Time
     current_time = datetime.now(eastern)
-    
     opening_time = get_opening_time(current_time.date())
     
     if current_time < opening_time:
         return opening_time
 
     if force_new_prediction or last_ml_prediction_time is None or current_time >= current_prediction:
-        # Start predictions from opening time
         prediction_time = opening_time
         next_oven_time = None
 
         while prediction_time <= current_time:
-            next_oven_time = predict_using_ml(prediction_time)
+            next_oven_time, oven_predictions = predict_using_ml(prediction_time)
             next_oven_time = adjust_prediction(next_oven_time, prediction_time)
             
             if next_oven_time is None or next_oven_time > current_time:
                 break
             
             prediction_time = next_oven_time
+
+        # Update oven_details
+        for pred in oven_predictions:
+            i = pred['oven'] - 1
+            if pred['next_time'] and pred['next_time'] > current_time:
+                time_diff = pred['next_time'] - current_time
+                time_str = f"{time_diff.seconds // 60:02d}:{time_diff.seconds % 60:02d}"
+                status = 'Active'
+            else:
+                time_str = '--:--'
+                status = 'Idle'
+
+            oven_details[i] = {
+                'time': time_str,
+                'status': status,
+                'leftovers': pred['leftovers']
+            }
 
         last_ml_prediction_time = current_time
         current_prediction = next_oven_time
@@ -155,6 +176,11 @@ def report_actual_time():
         'message': message
     })
 
+@app.route('/oven-status')
+def get_oven_status():
+    predict_next_oven_time()  # Ensure we have the latest prediction
+    return jsonify(oven_details)
+
 @app.route('/ovens')
 def ovens():
     return render_template('ovens.html')
@@ -163,6 +189,7 @@ if __name__ == '__main__':
 
     app.logger.info('Application starting')
     app.run(host='0.0.0.0', port=5000, debug=False)
+
 
 
 
