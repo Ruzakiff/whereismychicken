@@ -155,6 +155,10 @@ def report_actual_time():
         'message': message
     })
 
+@app.route('/ovens')
+def ovens():
+    return render_template('ovens.html')
+
 if __name__ == '__main__':
 
     app.logger.info('Application starting')

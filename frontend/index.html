@@ -50,7 +50,7 @@
         <h1>How Long for Chicken?</h1>
         <div class="time" id="countdown"></div>
         <div class="eastern-time" id="eastern-time"></div>
-        <button class="btn" onclick="showDetails()">See Oven Details</button>
+        <button class="btn" onclick="showOvenDetails()">See Oven Details</button>
         <button class="btn" onclick="reportActualTime()">Report Actual Chicken Time</button>
         <div id="actualTimeInput">
             <input type="datetime-local" id="customTime">
@@ -62,8 +62,8 @@
     <script>
         let targetTime = null;
 
-        function showDetails() {
-            alert("Oven details would be shown here");
+        function showOvenDetails() {
+            window.location.href = '/ovens';
         }
 
         function reportActualTime() {
@@ -170,4 +170,6 @@
     </script>
 </body>
 </html>
+
+
 

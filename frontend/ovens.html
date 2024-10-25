@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oven Details</title>
+    <style>
+    .oven-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-top: 20px;
+    }
+    
+    .oven {
+      border: 3px solid #333;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      background-color: #f0f0f0;
+    }
+    
+    .oven h3 {
+      margin-top: 0;
+    }
+    
+    .oven .time {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    
+    .oven .status {
+      font-style: italic;
+    }
+    
+    .oven.active {
+      background-color: #e6ffe6;
+      border-color: #4CAF50;
+    }
+    </style>
+</head>
+<body>
+    <h1>Oven Details</h1>
+    <div class="oven-container">
+      <div class="oven" id="oven1">
+        <h3>Oven 1</h3>
+        <p class="time">--:--</p>
+        <p class="status">Status: Idle</p>
+      </div>
+      <div class="oven" id="oven2">
+        <h3>Oven 2</h3>
+        <p class="time">--:--</p>
+        <p class="status">Status: Idle</p>
+      </div>
+      <div class="oven" id="oven3">
+        <h3>Oven 3</h3>
+        <p class="time">--:--</p>
+        <p class="status">Status: Idle</p>
+      </div>
+      <div class="oven" id="oven4">
+        <h3>Oven 4</h3>
+        <p class="time">--:--</p>
+        <p class="status">Status: Idle</p>
+      </div>
+    </div>
+    
+    <button onclick="window.location.href='/'">Back to Main Page</button>
+
+    <script>
+    function updateOvens() {
+      fetch('/oven-status')
+        .then(response => response.json())
+        .then(data => {
+          for (let i = 1; i <= 4; i++) {
+            const oven = document.getElementById(`oven${i}`);
+            const timeElement = oven.querySelector('.time');
+            const statusElement = oven.querySelector('.status');
+            
+            timeElement.textContent = data[i-1].time;
+            statusElement.textContent = `Status: ${data[i-1].status}`;
+            
+            if (data[i-1].status === 'Active') {
+              oven.classList.add('active');
+            } else {
+              oven.classList.remove('active');
+            }
+          }
+        });
+    }
+    
+    // Update ovens every 30 seconds
+    setInterval(updateOvens, 30000);
+    
+    // Initial update
+    updateOvens();
+    </script>
+</body>
+</html>
+
