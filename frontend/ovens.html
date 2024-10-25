@@ -72,34 +72,59 @@
     <button onclick="window.location.href='/'">Back to Main Page</button>
 
     <script>
+    let ovenTimers = [null, null, null, null];
+    let activeOvens = 0;
+
     function updateOvens() {
       fetch('/oven-status')
         .then(response => response.json())
         .then(data => {
+          activeOvens = 0;
           for (let i = 1; i <= 4; i++) {
             const oven = document.getElementById(`oven${i}`);
             const timeElement = oven.querySelector('.time');
             const statusElement = oven.querySelector('.status');
             const leftoversElement = oven.querySelector('.leftovers');
             
-            timeElement.textContent = data[i-1].time;
-            statusElement.textContent = `Status: ${data[i-1].status}`;
-            leftoversElement.textContent = `Estimated Leftovers: ${data[i-1].leftovers}`;
-            
             if (data[i-1].status === 'Active') {
+              activeOvens++;
               oven.classList.add('active');
+              let [minutes, seconds] = data[i-1].time.split(':').map(Number);
+              let totalSeconds = minutes * 60 + seconds;
+              
+              if (ovenTimers[i-1]) clearInterval(ovenTimers[i-1]);
+              
+              ovenTimers[i-1] = setInterval(() => {
+                totalSeconds--;
+                if (totalSeconds <= 0) {
+                  clearInterval(ovenTimers[i-1]);
+                  timeElement.textContent = '--:--';
+                  statusElement.textContent = 'Status: Idle';
+                  oven.classList.remove('active');
+                  activeOvens--;
+                  if (activeOvens === 0) {
+                    updateOvens();  // Update all ovens when the last timer finishes
+                  }
+                } else {
+                  let mins = Math.floor(totalSeconds / 60);
+                  let secs = totalSeconds % 60;
+                  timeElement.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                }
+              }, 1000);
             } else {
+              if (ovenTimers[i-1]) clearInterval(ovenTimers[i-1]);
+              timeElement.textContent = '--:--';
               oven.classList.remove('active');
             }
+            
+            statusElement.textContent = `Status: ${data[i-1].status}`;
+            leftoversElement.textContent = `Estimated Leftovers: ${data[i-1].leftovers}`;
           }
         });
     }
     
     // Update ovens immediately when the page loads
     updateOvens();
-    
-    // Then update every 30 seconds
-    setInterval(updateOvens, 30000);
     </script>
 </body>
 </html>
