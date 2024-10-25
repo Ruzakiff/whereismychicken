@@ -11,6 +11,7 @@ with open('chicken_models.pkl', 'rb') as f:
     saved_data = pickle.load(f)
     models = saved_data['models']
 
+# Define the Eastern timezone
 eastern = pytz.timezone('US/Eastern')
 
 # Global variables
@@ -78,9 +79,12 @@ def adjust_prediction(prediction, base_time):
 
     return prediction
 
-def predict_next_oven_time(current_time, force_new_prediction=False):
+def predict_next_oven_time(force_new_prediction=False):
     global last_ml_prediction_time, current_prediction
 
+    # Get current time in Eastern Time
+    current_time = datetime.now(eastern)
+    
     opening_time = get_opening_time(current_time.date())
     
     if current_time < opening_time:
@@ -111,8 +115,8 @@ def index():
 
 @app.route('/predict', methods=['GET'])
 def get_predictions():
+    next_oven_time = predict_next_oven_time()
     current_time = datetime.now(eastern)
-    next_oven_time = predict_next_oven_time(current_time)
     
     return jsonify({
         'current_time': current_time.isoformat(),
@@ -126,7 +130,7 @@ def report_actual_time():
     app.logger.info('Received request to /report-actual-time')
     data = request.json
     app.logger.info(f'Received data: {data}')
-    actual_time = datetime.fromisoformat(data['actual_time'])
+    actual_time = datetime.fromisoformat(data['actual_time']).astimezone(eastern)
     current_time = datetime.now(eastern)
     
     if actual_time > current_time:
@@ -136,7 +140,7 @@ def report_actual_time():
     else:
         # Reported time is in the past (last batch that came out)
         # Force a new prediction based on the reported time
-        next_oven_time = predict_next_oven_time(actual_time, force_new_prediction=True)
+        next_oven_time = predict_next_oven_time(force_new_prediction=True)
         message = 'New prediction based on past time'
     
     global current_prediction, last_ml_prediction_time
