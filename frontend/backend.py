@@ -87,8 +87,19 @@ def predict_next_oven_time(current_time, force_new_prediction=False):
         return opening_time
 
     if force_new_prediction or last_ml_prediction_time is None or current_time >= current_prediction:
-        next_oven_time = predict_using_ml(current_time)
-        next_oven_time = adjust_prediction(next_oven_time, current_time)
+        # Start predictions from opening time
+        prediction_time = opening_time
+        next_oven_time = None
+
+        while prediction_time <= current_time:
+            next_oven_time = predict_using_ml(prediction_time)
+            next_oven_time = adjust_prediction(next_oven_time, prediction_time)
+            
+            if next_oven_time is None or next_oven_time > current_time:
+                break
+            
+            prediction_time = next_oven_time
+
         last_ml_prediction_time = current_time
         current_prediction = next_oven_time
 
@@ -144,5 +155,6 @@ if __name__ == '__main__':
 
     app.logger.info('Application starting')
     app.run(host='0.0.0.0', port=5000, debug=False)
+
 
 
