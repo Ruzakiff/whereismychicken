@@ -92,12 +92,27 @@ def predict_next_oven_time(force_new_prediction=False):
     current_time = datetime.now(eastern)
     opening_time = get_opening_time(current_time.date())
     
-    if current_time < opening_time:
+    # If we're past opening time and no batches reported today,
+    # simulate from opening time
+    if current_time > opening_time:
+        if not last_ml_prediction_time or last_ml_prediction_time.date() != current_time.date():
+            prediction_time = opening_time
+        else:
+            prediction_time = last_ml_prediction_time
+    else:
+        # If before opening time, start from opening time
+        prediction_time = opening_time
         return opening_time
 
-    if force_new_prediction or last_ml_prediction_time is None or current_time >= current_prediction:
-        prediction_time = opening_time
+    # Changed condition to handle None case
+    if (force_new_prediction or 
+        last_ml_prediction_time is None or 
+        current_prediction is None or 
+        current_time >= current_prediction):
+        
         next_oven_time = None
+        # Initialize oven_predictions outside the loop
+        _, oven_predictions = predict_using_ml(prediction_time)
 
         while prediction_time <= current_time:
             next_oven_time, oven_predictions = predict_using_ml(prediction_time)
@@ -155,14 +170,25 @@ def report_actual_time():
     current_time = datetime.now(eastern)
     
     if actual_time > current_time:
-        # Reported time is in the future (next expected batch)
+        # Future time: just set it directly
         next_oven_time = adjust_prediction(actual_time, current_time)
         message = 'Future time set directly'
     else:
-        # Reported time is in the past (last batch that came out)
-        # Force a new prediction based on the reported time
-        next_oven_time = predict_next_oven_time(force_new_prediction=True)
-        message = 'New prediction based on past time'
+        # Past time: start new prediction chain from this time
+        prediction_time = actual_time
+        next_oven_time = None
+        
+        # Chain predictions forward until we get a future time
+        while prediction_time <= current_time:
+            next_oven_time, oven_predictions = predict_using_ml(prediction_time)
+            next_oven_time = adjust_prediction(next_oven_time, prediction_time)
+            
+            if next_oven_time is None or next_oven_time > current_time:
+                break
+            
+            prediction_time = next_oven_time
+            
+        message = 'New prediction chain from reported time'
     
     global current_prediction, last_ml_prediction_time
     current_prediction = next_oven_time
@@ -184,6 +210,10 @@ def get_oven_status():
 @app.route('/ovens')
 def ovens():
     return render_template('ovens.html')
+
+@app.route('/admin')
+def admin():
+    return render_template('admin.html')
 
 if __name__ == '__main__':
 

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chicken Admin</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Chicken Admin Panel</h1>
+
+        <div class="section">
+            <h2>Report Actual Time</h2>
+            <p>Current time: <span id="currentTime"></span></p>
+            <p>Current prediction: <span id="currentPrediction"></span></p>
+            <div>
+                <button onclick="reportActualTime('now')">Report Current Time</button>
+                <button onclick="reportActualTime('prediction')">Confirm Prediction</button>
+                <input type="datetime-local" id="customTime" step="60">
+                <button onclick="reportActualTime('custom')">Report Custom Time</button>
+            </div>
+            <p id="reportStatus"></p>
+        </div>
+    </div>
+
+    <script>
+        function updateCurrentTime() {
+            const now = new Date();
+            $('#currentTime').text(now.toLocaleString());
+        }
+
+        function updatePrediction() {
+            $.get('/predict', function(data) {
+                if (data.earliest_time) {
+                    const predTime = new Date(data.earliest_time);
+                    $('#currentPrediction').text(predTime.toLocaleString());
+                } else {
+                    $('#currentPrediction').text('No current prediction');
+                }
+            });
+        }
+
+        function reportActualTime(type) {
+            let timeToReport;
+            
+            if (type === 'now') {
+                timeToReport = new Date();
+            } else if (type === 'prediction') {
+                const predText = $('#currentPrediction').text();
+                if (predText === 'No current prediction') {
+                    $('#reportStatus').text('No prediction to confirm').removeClass('success').addClass('error');
+                    return;
+                }
+                timeToReport = new Date(predText);
+            } else if (type === 'custom') {
+                timeToReport = new Date($('#customTime').val());
+            }
+
+            if (!timeToReport || isNaN(timeToReport.getTime())) {
+                $('#reportStatus').text('Invalid time selected').removeClass('success').addClass('error');
+                return;
+            }
+
+            $.ajax({
+                url: '/report-actual-time',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    actual_time: timeToReport.toISOString()
+                }),
+                success: function(response) {
+                    $('#reportStatus').text('Time reported successfully: ' + response.message)
+                        .removeClass('error').addClass('success');
+                    updatePrediction();
+                },
+                error: function(xhr, status, error) {
+                    $('#reportStatus').text('Error reporting time: ' + error)
+                        .removeClass('success').addClass('error');
+                }
+            });
+        }
+
+        // Update time and prediction every second
+        setInterval(updateCurrentTime, 1000);
+        setInterval(updatePrediction, 5000);
+
+        // Initial updates
+        updateCurrentTime();
+        updatePrediction();
+    </script>
+</body>
+</html>
