@@ -51,12 +51,6 @@
         <div class="time" id="countdown"></div>
         <div class="eastern-time" id="eastern-time"></div>
         <button class="btn" onclick="showOvenDetails()">See Oven Details</button>
-        <button class="btn" onclick="reportActualTime()">Report Actual Chicken Time</button>
-        <div id="actualTimeInput">
-            <input type="datetime-local" id="customTime">
-            <button onclick="submitActualTime('custom')">Submit Custom Time</button>
-            <button onclick="submitActualTime('now')">Use Current Time</button>
-        </div>
     </div>
 
     <script>
@@ -64,51 +58,6 @@
 
         function showOvenDetails() {
             window.location.href = '/ovens';
-        }
-
-        function reportActualTime() {
-            document.getElementById('actualTimeInput').style.display = 'block';
-        }
-
-        function submitActualTime(type) {
-            let actualTime;
-            if (type === 'custom') {
-                actualTime = new Date(document.getElementById('customTime').value);
-            } else {
-                actualTime = new Date();
-            }
-            
-            console.log('Submitting actual time:', actualTime);
-
-            fetch('/report-actual-time', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    actual_time: actualTime.toISOString()
-                }),
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Response:', data);
-                if (data.new_prediction) {
-                    targetTime = new Date(data.new_prediction);
-                    document.getElementById('eastern-time').textContent = targetTime.toLocaleTimeString('en-US', { timeZone: 'America/New_York' });
-                    updateCountdown(); // Immediately update the countdown
-                }
-                alert(`Actual time reported successfully. ${data.message}`);
-                document.getElementById('actualTimeInput').style.display = 'none';
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-                alert('Failed to report actual time: ' + error.message);
-            });
         }
 
         function updateCountdown() {

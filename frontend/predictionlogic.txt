@@ -1,0 +1,105 @@
+# REGULAR WORKFLOW (Customer View)
+1. Store opens for the day
+   - If first prediction of day:
+     Start predictions from opening time (8am/10am)
+   - Chain forward until getting future prediction
+   - Display countdown to next batch
+
+2. Throughout day (Auto-refresh every minute):
+   if current_time >= next_predicted_time:
+     Generate new prediction chain
+   else:
+     Keep existing prediction
+
+3. Store closes
+   - No new batches in last 20min (except Sunday)
+   - System shows "Closed" until next day
+
+
+# STAFF REPORTING WORKFLOW
+1. Staff puts chicken in oven:
+   Case A: Reporting Current Batch
+   - Staff clicks "Start Batch Now"
+   - System uses current time as actual_time
+   - Chains new predictions from this point
+
+   Case B: Scheduling Future Batch
+   - Staff enters future time
+   - System validates against operating hours
+   - Sets this as next prediction directly
+
+   Case C: Retroactive Reporting
+   - Staff enters past time
+   - System chains predictions from that time
+   - Catches up to current time
+
+
+# EDGE CASES AND BUSINESS RULES
+
+Opening Time Rules:
+- Mon-Sat: Opens 8:00 AM
+- Sunday: Opens 10:00 AM
+- Before opening → Show countdown to opening
+
+Closing Time Rules:
+- Mon-Sat: Closes 8:00 PM
+  → No batches after 7:40 PM
+- Sunday: Closes 6:00 PM
+  → Can have batches until close
+- After closing → Show "Closed until [next opening]"
+
+Day Transition Rules:
+if current_prediction extends past closing:
+    if same_day:
+        if sunday:
+            allow_prediction
+        else:
+            return none  # Done for day
+    else:
+        jump_to_next_opening_time
+
+Holiday/Special Hours:
+- Currently not implemented
+- Would need additional calendar logic
+
+Multi-Oven Management:
+- Track predictions for all 4 ovens
+- Show individual countdowns
+- Update all predictions when any oven reports
+
+
+# REAL-WORLD SCENARIOS
+
+1. Normal Day Operation:
+   8:00 - Store opens
+   8:05 - First batch started → Report actual
+   8:35 - ML predicts next batch
+   9:15 - Staff starts batch early → Report actual
+   ...continues through day
+
+2. Late Start Day:
+   8:00 - Store opens
+   8:45 - First batch delayed → Report actual
+   System adjusts all subsequent predictions
+
+3. Busy Period:
+   12:00 - Lunch rush begins
+   12:10 - Batch started → Report actual
+   12:30 - Another batch needed → Report future
+   12:35 - Batch started early → Update actual
+
+4. End of Day:
+   7:30 - Last regular batch
+   7:40 - System stops predictions
+   8:00 - Store closes
+
+5. Sunday Operations:
+   10:00 - Later opening
+   5:45 - Can still start batch
+   6:00 - Close
+
+6. System Recovery:
+   If server restarts:
+   - Check last_ml_prediction_time
+   - If today: continue from there
+   - If yesterday/null: start fresh from opening

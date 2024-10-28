@@ -36,15 +36,28 @@
         <h1>Chicken Admin Panel</h1>
 
         <div class="section">
-            <h2>Report Actual Time</h2>
-            <p>Current time: <span id="currentTime"></span></p>
-            <p>Current prediction: <span id="currentPrediction"></span></p>
-            <div>
-                <button onclick="reportActualTime('now')">Report Current Time</button>
-                <button onclick="reportActualTime('prediction')">Confirm Prediction</button>
-                <input type="datetime-local" id="customTime" step="60">
-                <button onclick="reportActualTime('custom')">Report Custom Time</button>
+            <h2>Report Oven Time</h2>
+            <p>Current ovens: <span id="currentPrediction"></span></p>
+            
+            <!-- Quick actions -->
+            <div style="margin-bottom: 15px;">
+                <button onclick="reportNow()" style="width: 100%; margin-bottom: 10px;">Report Current Time</button>
             </div>
+
+            <!-- Time input section -->
+            <div style="margin-bottom: 15px;">
+                <input type="number" id="minutesInput" min="1" step="1"
+                       style="width: 70%; padding: 10px;" placeholder="Minutes remaining">
+                <button onclick="reportFutureTime()" style="width: 25%;">Set</button>
+            </div>
+
+            <!-- Past time section -->
+            <div>
+                <input type="number" id="pastMinutesInput" min="1" step="1"
+                       style="width: 70%; padding: 10px;" placeholder="Minutes ago">
+                <button onclick="reportPastTime()" style="width: 25%;">Past</button>
+            </div>
+
             <p id="reportStatus"></p>
         </div>
     </div>
@@ -66,27 +79,40 @@
             });
         }
 
-        function reportActualTime(type) {
-            let timeToReport;
-            
-            if (type === 'now') {
-                timeToReport = new Date();
-            } else if (type === 'prediction') {
-                const predText = $('#currentPrediction').text();
-                if (predText === 'No current prediction') {
-                    $('#reportStatus').text('No prediction to confirm').removeClass('success').addClass('error');
-                    return;
-                }
-                timeToReport = new Date(predText);
-            } else if (type === 'custom') {
-                timeToReport = new Date($('#customTime').val());
-            }
+        function reportNow() {
+            const easternTime = new Date(getEasternTime());
+            sendTimeReport(easternTime);
+        }
 
-            if (!timeToReport || isNaN(timeToReport.getTime())) {
-                $('#reportStatus').text('Invalid time selected').removeClass('success').addClass('error');
+        function reportFutureTime() {
+            const minutes = parseInt($('#minutesInput').val());
+            
+            if (!minutes || minutes < 1 || !Number.isInteger(minutes)) {
+                $('#reportStatus').text('Please enter a positive whole number of minutes')
+                    .removeClass('success').addClass('error');
                 return;
             }
 
+            const futureTime = new Date(Date.now() + minutes * 60000);
+            sendTimeReport(futureTime);
+            $('#minutesInput').val('');
+        }
+
+        function reportPastTime() {
+            const minutes = parseInt($('#pastMinutesInput').val());
+            
+            if (!minutes || minutes < 1 || !Number.isInteger(minutes)) {
+                $('#reportStatus').text('Please enter a positive whole number of minutes')
+                    .removeClass('success').addClass('error');
+                return;
+            }
+
+            const pastTime = new Date(Date.now() - minutes * 60000);
+            sendTimeReport(pastTime);
+            $('#pastMinutesInput').val('');
+        }
+
+        function sendTimeReport(timeToReport) {
             $.ajax({
                 url: '/report-actual-time',
                 method: 'POST',
@@ -104,6 +130,10 @@
                         .removeClass('success').addClass('error');
                 }
             });
+        }
+
+        function getEasternTime() {
+            return new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
         }
 
         // Update time and prediction every second
