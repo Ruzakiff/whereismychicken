@@ -5,6 +5,8 @@ import pytz
 import numpy as np
 from queue import Queue
 from flask import Response
+import os
+from urllib.parse import unquote
 
 app = Flask(__name__, template_folder='.')
 
@@ -21,6 +23,10 @@ current_prediction = None
 last_ml_prediction_time = None
 oven_details = [{'time': '--:--', 'status': 'Idle', 'leftovers': '--'} for _ in range(4)]
 clients = []
+
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN')
+if not ADMIN_TOKEN:
+    raise ValueError("ADMIN_TOKEN environment variable must be set")
 
 def get_opening_time(date):
     day_of_week = date.weekday()
@@ -215,8 +221,12 @@ def get_oven_status():
 def ovens():
     return render_template('ovens.html')
 
-@app.route('/admin')
-def admin():
+@app.route('/admin/<token>')
+def admin(token):
+    # Decode the token in case it was URL encoded
+    decoded_token = unquote(token)
+    if decoded_token != ADMIN_TOKEN:
+        return "Unauthorized", 401
     return render_template('admin.html')
 
 def notify_clients():
