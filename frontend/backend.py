@@ -3,6 +3,8 @@ import pickle
 from datetime import datetime, timedelta, time
 import pytz
 import numpy as np
+from queue import Queue
+from flask import Response
 
 app = Flask(__name__, template_folder='.')
 
@@ -18,6 +20,7 @@ eastern = pytz.timezone('US/Eastern')
 current_prediction = None
 last_ml_prediction_time = None
 oven_details = [{'time': '--:--', 'status': 'Idle', 'leftovers': '--'} for _ in range(4)]
+clients = []
 
 def get_opening_time(date):
     day_of_week = date.weekday()
@@ -194,7 +197,8 @@ def report_actual_time():
     current_prediction = next_oven_time
     last_ml_prediction_time = actual_time
     
-    app.logger.info(f'New prediction set: {current_prediction.isoformat() if current_prediction else "None"}')
+    # Notify all clients of the update
+    notify_clients()
     
     return jsonify({
         'status': 'success', 
@@ -214,6 +218,30 @@ def ovens():
 @app.route('/admin')
 def admin():
     return render_template('admin.html')
+
+def notify_clients():
+    app.logger.info(f'Notifying {len(clients)} clients')
+    for client in clients[:]:
+        try:
+            client.put("update")
+            app.logger.info('Successfully notified a client')
+        except:
+            clients.remove(client)
+            app.logger.info('Removed disconnected client')
+
+@app.route('/events')
+def events():
+    def stream():
+        client = Queue()
+        clients.append(client)
+        try:
+            while True:
+                message = client.get()
+                yield f"data: {message}\n\n"
+        finally:
+            clients.remove(client)
+    
+    return Response(stream(), mimetype='text/event-stream')
 
 if __name__ == '__main__':
 

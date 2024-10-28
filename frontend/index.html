@@ -167,9 +167,35 @@
 
         // Fetch new prediction every minute
         setInterval(fetchPrediction, 60000);
+
+        // Add this with your other JavaScript
+        const evtSource = new EventSource("/events");
+        
+        evtSource.onopen = function(event) {
+            console.log('SSE connection opened');
+        };
+        
+        evtSource.onerror = function(event) {
+            console.log('SSE connection error:', event);
+        };
+        
+        evtSource.onmessage = function(event) {
+            console.log('SSE message received:', event.data);
+            if (event.data === "update") {
+                // Force immediate update
+                fetchPrediction();
+                // Reset the interval timer to avoid quick double updates
+                clearInterval(updateInterval);
+                updateInterval = setInterval(fetchPrediction, 60000);
+            }
+        };
+
+        // Store interval ID so we can reset it
+        let updateInterval = setInterval(fetchPrediction, 60000);
+
+        // Initial update
+        fetchPrediction();
     </script>
 </body>
 </html>
-
-
 
