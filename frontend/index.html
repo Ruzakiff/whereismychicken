@@ -43,6 +43,56 @@
             display: none;
             margin-top: 1em;
         }
+        .schedule-container {
+            margin-top: 2em;
+            width: 90%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .schedule-table th,
+        .schedule-table td {
+            padding: 12px 8px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+
+        .schedule-table th {
+            background: #4a4a4a;
+            color: white;
+            font-size: 0.9em;
+        }
+
+        .schedule-table td {
+            font-size: 1.1em;
+        }
+
+        .schedule-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .current-batch {
+            background-color: #f0f8ff;
+            font-weight: bold;
+        }
+
+        @media (max-width: 380px) {
+            .schedule-table th,
+            .schedule-table td {
+                padding: 8px 4px;
+                font-size: 0.9em;
+            }
+        }
     </style>
 </head>
 <body>
@@ -51,6 +101,19 @@
         <div class="time" id="countdown"></div>
         <div class="eastern-time" id="eastern-time"></div>
         <button class="btn" onclick="showOvenDetails()">See Oven Details</button>
+        <div class="schedule-container">
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th>Oven</th>
+                        <th>Target Time</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduleBody">
+                    <!-- Will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
@@ -85,6 +148,45 @@
             }
         }
 
+        function updateSchedule(data) {
+            const scheduleBody = document.getElementById('schedule-body');
+            scheduleBody.innerHTML = '';
+
+            if (!data || !data.batches || data.batches.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="3">No active batches</td>';
+                scheduleBody.appendChild(row);
+                return;
+            }
+
+            data.batches.forEach(batch => {
+                const row = document.createElement('tr');
+                const startTime = new Date(batch.start_time);
+                const readyTime = new Date(batch.ready_time);
+                
+                // Format times in 12-hour format
+                const formatTime = (date) => {
+                    return date.toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).toLowerCase();
+                };
+
+                // Add 'current-batch' class if this is the next ready batch
+                if (batch.is_next) {
+                    row.classList.add('current-batch');
+                }
+
+                row.innerHTML = `
+                    <td>${batch.number}</td>
+                    <td>${formatTime(startTime)}</td>
+                    <td>${formatTime(readyTime)}</td>
+                `;
+                scheduleBody.appendChild(row);
+            });
+        }
+
         function fetchPrediction() {
             fetch('/predict')
                 .then(response => response.json())
@@ -105,6 +207,9 @@
                         document.getElementById('eastern-time').textContent = "";
                         targetTime = null;
                     }
+
+                    // Update schedule
+                    updateSchedule(data);
                 });
         }
 
@@ -144,6 +249,40 @@
 
         // Initial update
         fetchPrediction();
+
+        // Add this to your existing JavaScript
+        function loadSchedule() {
+            fetch('/schedule')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const scheduleBody = document.getElementById('scheduleBody');
+                    scheduleBody.innerHTML = '';
+                    
+                    if (!data.schedule || data.schedule.length === 0) {
+                        scheduleBody.innerHTML = '<tr><td colspan="2">Schedule not available</td></tr>';
+                        return;
+                    }
+                    
+                    data.schedule.forEach(([oven, time]) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${oven}</td><td>${time}</td>`;
+                        scheduleBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading schedule:', error);
+                    document.getElementById('scheduleBody').innerHTML = 
+                        '<tr><td colspan="2">Unable to load schedule</td></tr>';
+                });
+        }
+
+        // Load schedule when page loads
+        document.addEventListener('DOMContentLoaded', loadSchedule);
     </script>
 </body>
 </html>

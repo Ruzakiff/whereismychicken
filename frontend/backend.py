@@ -7,6 +7,8 @@ from queue import Queue
 from flask import Response
 import os
 from urllib.parse import unquote
+# Add near the top with other imports
+STATIC_SCHEDULE_DIR = os.path.join(os.path.dirname(__file__), 'staticschedule')
 
 app = Flask(__name__, template_folder='.')
 
@@ -253,11 +255,28 @@ def events():
     
     return Response(stream(), mimetype='text/event-stream')
 
+@app.route('/schedule')
+def get_schedule():
+    current_time = datetime.now(eastern)
+    day_of_week = current_time.weekday()  # 0-6 (Monday-Sunday)
+    
+    try:
+        # Read schedule based on weekday/weekend
+        filename = 'sunday_schedule.txt' if day_of_week == 6 else 'weekday_schedule.txt'
+        filepath = os.path.join(STATIC_SCHEDULE_DIR, filename)
+        
+        with open(filepath, 'r') as f:
+            schedule = [line.strip().split(',') for line in f if line.strip()]
+        return jsonify({'schedule': schedule})
+    except FileNotFoundError as e:
+        print(f"Schedule file not found: {e}")  # For debugging
+        return jsonify({'schedule': [], 'error': 'Schedule file not found'}), 404
+    except Exception as e:
+        print(f"Error loading schedule: {e}")  # For debugging
+        return jsonify({'schedule': [], 'error': str(e)}), 500
+
 if __name__ == '__main__':
 
     app.logger.info('Application starting')
     app.run(host='0.0.0.0', port=5000, debug=False)
-
-
-
 
