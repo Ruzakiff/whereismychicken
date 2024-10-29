@@ -327,25 +327,29 @@
                 const row = document.createElement('tr');
                 row.innerHTML = `<td>${oven}</td><td>${scheduledTime}</td>`;
                 
-                // Convert schedule time to Date object for comparison
-                const scheduleDate = new Date(`1/1/2024 ${scheduledTime}`);
+                // Convert schedule time to comparable format
+                const [time, period] = scheduledTime.split(' ');
+                const [hours, minutes] = time.split(':');
+                let scheduleHours = parseInt(hours);
+                if (period.toLowerCase() === 'pm' && scheduleHours !== 12) {
+                    scheduleHours += 12;
+                } else if (period.toLowerCase() === 'am' && scheduleHours === 12) {
+                    scheduleHours = 0;
+                }
                 
+                // Find the closest schedule time to the prediction
                 if (predictedTime) {
-                    // If we have a prediction, use it to determine highlighting
-                    if (!nextBatchFound && scheduleDate <= predictedTime && now <= predictedTime) {
-                        // This is the batch we're waiting for
+                    const predictionHours = predictedTime.getHours();
+                    const predictionMinutes = predictedTime.getMinutes();
+                    
+                    // If this schedule time is closest to prediction time (within 2 hours)
+                    if (!nextBatchFound && 
+                        Math.abs(scheduleHours - predictionHours) <= 2 && 
+                        scheduleHours <= predictionHours) {
                         row.classList.add('current-batch');
                         nextBatchFound = true;
-                    } else if (scheduleDate < now && (!predictedTime || scheduleDate < predictedTime)) {
-                        // This batch is in the past
-                        row.classList.add('past-batch');
-                    }
-                } else {
-                    // Fallback to simple time-based logic if no prediction
-                    if (!nextBatchFound && scheduleDate > now) {
-                        row.classList.add('current-batch');
-                        nextBatchFound = true;
-                    } else if (scheduleDate <= now) {
+                    } else if (scheduleHours < now.getHours() || 
+                             (scheduleHours === now.getHours() && parseInt(minutes) < now.getMinutes())) {
                         row.classList.add('past-batch');
                     }
                 }
