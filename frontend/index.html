@@ -179,6 +179,183 @@
             color: #666;
             line-height: 1.4;
         }
+
+        /* Modal styles optimized for mobile */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            padding: 20px;
+            border-radius: 20px 20px 0 0;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-out;
+            z-index: 1001;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-content.show {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            position: sticky;
+            top: 0;
+            background: white;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-close {
+            border: none;
+            background: none;
+            font-size: 24px;
+            color: #666;
+            padding: 8px 12px;  /* Larger touch target */
+            cursor: pointer;
+            margin: -8px -12px;  /* Offset padding to maintain alignment */
+        }
+
+        .faq-item {
+            margin-bottom: 20px;
+            padding: 0 4px;  /* Add side padding for readability */
+        }
+
+        .faq-question {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #4a4a4a;
+            font-size: 1.1em;  /* Slightly larger for better readability */
+        }
+
+        .faq-answer {
+            color: #666;
+            line-height: 1.6;  /* Increased line height for readability */
+            font-size: 0.95em;
+        }
+
+        /* Schedule table styles */
+        .schedule-container {
+            margin-top: 2em;
+            width: 90%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .schedule-table th,
+        .schedule-table td {
+            padding: 12px 8px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+
+        .schedule-table th {
+            background: #4a4a4a;
+            color: white;
+            font-size: 0.9em;
+        }
+
+        .schedule-table td {
+            font-size: 1.1em;
+        }
+
+        /* Info icon styles */
+        .info-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #666;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 20px;
+            color: #666;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            margin-left: 8px;
+            vertical-align: middle;
+            -webkit-tap-highlight-color: transparent;  /* Remove tap highlight on mobile */
+        }
+
+        /* Status messages */
+        .prediction-status {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 0.5em;
+        }
+
+        .info-note {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 0.5em;
+            font-style: italic;
+            padding: 0 20px;  /* Add side padding for better readability */
+        }
+
+        /* Media queries for larger screens */
+        @media (min-width: 768px) {
+            .container {
+                top: -10vh;  /* Less offset needed on larger screens */
+            }
+
+            .modal-content {
+                max-width: 600px;
+                left: 50%;
+                transform: translateX(-50%) translateY(100%);
+                border-radius: 20px;
+                margin: 20px 0;
+            }
+
+            .modal-content.show {
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* Ensure touch targets are at least 44px */
+        @media (max-width: 380px) {
+            .schedule-table th,
+            .schedule-table td {
+                padding: 12px 4px;
+                font-size: 0.9em;
+            }
+
+            .info-icon {
+                width: 24px;
+                height: 24px;
+                line-height: 24px;
+            }
+
+            .modal-close {
+                padding: 12px;
+            }
+        }
     </style>
 </head>
 <body>
