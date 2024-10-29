@@ -166,12 +166,19 @@ def get_predictions():
     next_oven_time = predict_next_oven_time()
     current_time = datetime.now(eastern)
     
+    # Calculate how old the last manual update is
+    is_confirmed = False
+    if last_manual_update:
+        time_since_update = current_time - last_manual_update
+        is_confirmed = time_since_update.total_seconds() < 5400  # 90 minutes in seconds
+    
     return jsonify({
         'current_time': current_time.isoformat(),
         'is_open': is_within_operating_hours(current_time),
         'earliest_time': next_oven_time.isoformat() if next_oven_time else None,
         'is_sunday': current_time.weekday() == 6,
-        'last_manual_update': last_manual_update.isoformat() if last_manual_update else None
+        'last_manual_update': last_manual_update.isoformat() if last_manual_update else None,
+        'is_confirmed': is_confirmed
     })
 
 @app.route('/report-actual-time', methods=['POST'])

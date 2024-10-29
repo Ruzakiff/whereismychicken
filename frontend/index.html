@@ -100,8 +100,8 @@
         <h1>How Long for Chicken?</h1>
         <div class="time" id="countdown"></div>
         <div class="eastern-time" id="eastern-time"></div>
-        <div class="last-update" id="lastUpdateIndicator" style="display: none; font-size: 0.8em; color: #666; margin-top: 0.5em;">
-            Last updated: <span id="lastUpdateTime"></span>
+        <div class="prediction-status" id="predictionStatus" style="font-size: 0.8em; color: #666; margin-top: 0.5em;">
+            <!-- Will be populated by JavaScript -->
         </div>
         <button class="btn" onclick="showOvenDetails()">See Oven Details</button>
         <div class="schedule-container">
@@ -205,24 +205,26 @@
                     updateCountdown();
                 }
 
-                // Add last update indicator
-                if (data.last_manual_update) {
-                    console.log('Last update time:', data.last_manual_update);
+                // Update prediction status message
+                const statusElement = document.getElementById('predictionStatus');
+                if (data.is_confirmed) {
                     const updateTime = new Date(data.last_manual_update);
                     const timeStr = updateTime.toLocaleTimeString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit',
                         hour12: true
                     }).toLowerCase();
-                    document.getElementById('lastUpdateTime').textContent = timeStr;
-                    document.getElementById('lastUpdateIndicator').style.display = 'block';
+                    statusElement.textContent = `Recently confirmed at ${timeStr}`;
+                    statusElement.style.color = '#2e7d32';  // dark green
                 } else {
-                    document.getElementById('lastUpdateIndicator').style.display = 'none';
+                    statusElement.textContent = 'Estimated Time based on schedule';
+                    statusElement.style.color = '#666';  // gray
                 }
+                statusElement.style.display = 'block';
             } else {
                 document.getElementById('countdown').textContent = "No prediction available";
                 document.getElementById('eastern-time').textContent = "";
-                document.getElementById('lastUpdateIndicator').style.display = 'none';
+                document.getElementById('predictionStatus').style.display = 'none';
                 targetTime = null;
             }
 
