@@ -119,174 +119,6 @@
             vertical-align: middle;
         }
 
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-        }
-
-        .modal-content {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: white;
-            padding: 20px;
-            border-radius: 20px 20px 0 0;
-            transform: translateY(100%);
-            transition: transform 0.3s ease-out;
-            z-index: 1001;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal-content.show {
-            transform: translateY(0);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .modal-close {
-            border: none;
-            background: none;
-            font-size: 24px;
-            color: #666;
-            padding: 5px;
-            cursor: pointer;
-        }
-
-        .faq-item {
-            margin-bottom: 20px;
-        }
-
-        .faq-question {
-            font-weight: bold;
-            margin-bottom: 8px;
-            color: #4a4a4a;
-        }
-
-        .faq-answer {
-            color: #666;
-            line-height: 1.4;
-        }
-
-        /* Modal styles optimized for mobile */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-        }
-
-        .modal-content {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: white;
-            padding: 20px;
-            border-radius: 20px 20px 0 0;
-            transform: translateY(100%);
-            transition: transform 0.3s ease-out;
-            z-index: 1001;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal-content.show {
-            transform: translateY(0);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            position: sticky;
-            top: 0;
-            background: white;
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .modal-close {
-            border: none;
-            background: none;
-            font-size: 24px;
-            color: #666;
-            padding: 8px 12px;  /* Larger touch target */
-            cursor: pointer;
-            margin: -8px -12px;  /* Offset padding to maintain alignment */
-        }
-
-        .faq-item {
-            margin-bottom: 20px;
-            padding: 0 4px;  /* Add side padding for readability */
-        }
-
-        .faq-question {
-            font-weight: bold;
-            margin-bottom: 8px;
-            color: #4a4a4a;
-            font-size: 1.1em;  /* Slightly larger for better readability */
-        }
-
-        .faq-answer {
-            color: #666;
-            line-height: 1.6;  /* Increased line height for readability */
-            font-size: 0.95em;
-        }
-
-        /* Schedule table styles */
-        .schedule-container {
-            margin-top: 2em;
-            width: 90%;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .schedule-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .schedule-table th,
-        .schedule-table td {
-            padding: 12px 8px;
-            text-align: center;
-            border-bottom: 1px solid #eee;
-        }
-
-        .schedule-table th {
-            background: #4a4a4a;
-            color: white;
-            font-size: 0.9em;
-        }
-
-        .schedule-table td {
-            font-size: 1.1em;
-        }
-
-        /* Info icon styles */
         .info-icon {
             display: inline-block;
             width: 20px;
@@ -319,25 +151,6 @@
             padding: 0 20px;  /* Add side padding for better readability */
         }
 
-        /* Media queries for larger screens */
-        @media (min-width: 768px) {
-            .container {
-                top: -10vh;  /* Less offset needed on larger screens */
-            }
-
-            .modal-content {
-                max-width: 600px;
-                left: 50%;
-                transform: translateX(-50%) translateY(100%);
-                border-radius: 20px;
-                margin: 20px 0;
-            }
-
-            .modal-content.show {
-                transform: translateX(-50%) translateY(0);
-            }
-        }
-
         /* Ensure touch targets are at least 44px */
         @media (max-width: 380px) {
             .schedule-table th,
@@ -357,6 +170,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="/static/styles/faq.css">
 </head>
 <body>
     <div class="container">
@@ -389,50 +203,18 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="infoModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 style="margin: 0; font-size: 1.5em;">Frequently Asked Questions</h2>
-                <button class="modal-close" onclick="hideInfo()">&times;</button>
-            </div>
-            <div class="faq-item">
-                <div class="faq-question">What does "Estimated Ready Time" mean?</div>
-                <div class="faq-answer">
-                    The Estimated Ready Time is our best guess for when the next batch of rotisserie chickens will be ready. We use a combination of the standard schedule and real-time adjustments, so this time may vary slightly from the schedule. Think of it as a close estimate, but not an exact time.
-                </div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-question">Why is there a difference between the Scheduled Time and the Estimated Ready Time?</div>
-                <div class="faq-answer">
-                    Scheduled times are based on the Club's typical cooking schedule, while the Estimated Ready Time accounts for slight delays or faster preparation due to factors like worker availability. Our goal is to give you a realistic idea of when chickens will be ready, even if it doesn't match the exact schedule.
-                </div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-question">How accurate is the Estimated Ready Time?</div>
-                <div class="faq-answer">
-                    The Estimated Ready Time is usually accurate within +/- 30 minutes. While we do our best to keep it reliable, unexpected delays can happen. We recommend checking back occasionally if you're planning to pick up a chicken soon.
-                </div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-question">Can I rely on this time to avoid waiting?</div>
-                <div class="faq-answer">
-                    We hope this tool saves you time, but since it's only an estimate, we can't guarantee it will always be perfectly accurate. Use it as a helpful guide, and check for updates to make sure the timing is still close.
-                </div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-question">Who created this tool?</div>
-                <div class="faq-answer">
-                    This tool was created by a Club member to help other members get a better idea of when rotisserie chickens will be ready. It's not an official Club service(yet) but is designed to make your shopping experience easier.
-                </div>
-            </div>
-            <!-- <div class="faq-item">
-                <div class="faq-question">Can I support this tool?</div>
-                <div class="faq-answer">
-                    If you find this tool helpful, consider making a small donation to support its maintenance. Donations help keep the tool running and improve its accuracy.
-                </div>
-            </div> -->
-        </div>
-    </div>
+    <!-- Include FAQ component -->
+    <div id="faq-container"></div>
+
+    <script src="/static/scripts/faq.js"></script>
+    <script>
+        // Load FAQ component
+        fetch('/static/components/faq.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('faq-container').innerHTML = html;
+            });
+    </script>
 
     <script>
         let targetTime = null;
@@ -694,6 +476,3 @@
     </script>
 </body>
 </html>
-
-
-
