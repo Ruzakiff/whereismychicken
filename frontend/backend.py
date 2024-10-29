@@ -25,6 +25,7 @@ current_prediction = None
 last_ml_prediction_time = None
 oven_details = [{'time': '--:--', 'status': 'Idle', 'leftovers': '--'} for _ in range(4)]
 clients = []
+last_manual_update = None
 
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN')
 if not ADMIN_TOKEN:
@@ -169,12 +170,13 @@ def get_predictions():
         'current_time': current_time.isoformat(),
         'is_open': is_within_operating_hours(current_time),
         'earliest_time': next_oven_time.isoformat() if next_oven_time else None,
-        'is_sunday': current_time.weekday() == 6
+        'is_sunday': current_time.weekday() == 6,
+        'last_manual_update': last_manual_update.isoformat() if last_manual_update else None
     })
 
 @app.route('/report-actual-time', methods=['POST'])
 def report_actual_time():
-    app.logger.info('Received request to /report-actual-time')
+    global current_prediction, last_ml_prediction_time, last_manual_update
     data = request.json
     app.logger.info(f'Received data: {data}')
     actual_time = datetime.fromisoformat(data['actual_time']).astimezone(eastern)
@@ -204,6 +206,7 @@ def report_actual_time():
     global current_prediction, last_ml_prediction_time
     current_prediction = next_oven_time
     last_ml_prediction_time = actual_time
+    last_manual_update = datetime.now(eastern)  # Set the last update time
     
     # Notify all clients of the update
     notify_clients()
@@ -211,7 +214,8 @@ def report_actual_time():
     return jsonify({
         'status': 'success', 
         'new_prediction': current_prediction.isoformat() if current_prediction else None,
-        'message': message
+        'message': message,
+        'last_update': last_manual_update.isoformat()
     })
 
 @app.route('/oven-status')

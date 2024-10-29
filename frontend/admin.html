@@ -38,6 +38,9 @@
         <div class="section">
             <h2>Report Oven Time</h2>
             <p>Current ovens: <span id="currentPrediction"></span></p>
+            <p style="font-size: 0.9em; color: #666;">
+                Last updated: <span id="lastUpdateTime">Never</span>
+            </p>
             
             <!-- Quick actions -->
             <div style="margin-bottom: 15px;">
@@ -124,6 +127,14 @@
                     $('#reportStatus').text('Time reported successfully: ' + response.message)
                         .removeClass('error').addClass('success');
                     updatePrediction();
+                    
+                    // Update the last updated time
+                    const now = new Date();
+                    $('#lastUpdateTime').text(now.toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }));
                 },
                 error: function(xhr, status, error) {
                     $('#reportStatus').text('Error reporting time: ' + error)

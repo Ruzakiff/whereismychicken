@@ -100,6 +100,9 @@
         <h1>How Long for Chicken?</h1>
         <div class="time" id="countdown"></div>
         <div class="eastern-time" id="eastern-time"></div>
+        <div class="last-update" id="lastUpdateIndicator" style="display: none; font-size: 0.8em; color: #666; margin-top: 0.5em;">
+            Last updated: <span id="lastUpdateTime"></span>
+        </div>
         <button class="btn" onclick="showOvenDetails()">See Oven Details</button>
         <div class="schedule-container">
             <table class="schedule-table">
@@ -187,30 +190,54 @@
             });
         }
 
+        function updateDisplay(data) {
+            console.log('Received data:', data);
+            
+            if (data.earliest_time) {
+                targetTime = new Date(data.earliest_time);
+                const now = new Date();
+                if (targetTime.getDate() !== now.getDate()) {
+                    document.getElementById('countdown').textContent = "Next batch tomorrow";
+                } else if (!data.is_open) {
+                    document.getElementById('countdown').textContent = "Store closed";
+                } else {
+                    document.getElementById('eastern-time').textContent = targetTime.toLocaleTimeString('en-US', { timeZone: 'America/New_York' });
+                    updateCountdown();
+                }
+
+                // Add last update indicator
+                if (data.last_manual_update) {
+                    console.log('Last update time:', data.last_manual_update);
+                    const updateTime = new Date(data.last_manual_update);
+                    const timeStr = updateTime.toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).toLowerCase();
+                    document.getElementById('lastUpdateTime').textContent = timeStr;
+                    document.getElementById('lastUpdateIndicator').style.display = 'block';
+                } else {
+                    document.getElementById('lastUpdateIndicator').style.display = 'none';
+                }
+            } else {
+                document.getElementById('countdown').textContent = "No prediction available";
+                document.getElementById('eastern-time').textContent = "";
+                document.getElementById('lastUpdateIndicator').style.display = 'none';
+                targetTime = null;
+            }
+
+            // Update schedule
+            updateSchedule(data);
+        }
+
         function fetchPrediction() {
             fetch('/predict')
                 .then(response => response.json())
                 .then(data => {
-                    if (data.earliest_time) {
-                        targetTime = new Date(data.earliest_time);
-                        const now = new Date();
-                        if (targetTime.getDate() !== now.getDate()) {
-                            document.getElementById('countdown').textContent = "Next batch tomorrow";
-                        } else if (!data.is_open) {
-                            document.getElementById('countdown').textContent = "Store closed";
-                        } else {
-                            document.getElementById('eastern-time').textContent = targetTime.toLocaleTimeString('en-US', { timeZone: 'America/New_York' });
-                            updateCountdown();
-                        }
-                    } else {
-                        document.getElementById('countdown').textContent = "No prediction available";
-                        document.getElementById('eastern-time').textContent = "";
-                        targetTime = null;
-                    }
-
-                    // Update schedule
-                    updateSchedule(data);
-                });
+                    console.log('Fetched data:', data);
+                    updateDisplay(data);
+                })
+                .catch(error => console.error('Error:', error));
         }
 
         // Initial fetch
