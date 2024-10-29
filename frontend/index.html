@@ -293,54 +293,65 @@
 
         // Add this to your existing JavaScript
         function loadSchedule() {
-            fetch('/schedule')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    const scheduleBody = document.getElementById('scheduleBody');
-                    scheduleBody.innerHTML = '';
-                    
-                    if (!data.schedule || data.schedule.length === 0) {
-                        scheduleBody.innerHTML = '<tr><td colspan="2">Schedule not available</td></tr>';
-                        return;
-                    }
-                    
-                    const now = new Date();
-                    const currentTime = now.toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                    }).toLowerCase();
-                    
-                    let nextBatchFound = false;
-                    
-                    data.schedule.forEach(([oven, scheduledTime]) => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `<td>${oven}</td><td>${scheduledTime}</td>`;
-                        
-                        // Convert times to comparable format (24 hour)
-                        const scheduleDate = new Date(`1/1/2024 ${scheduledTime}`);
-                        const currentDate = new Date(`1/1/2024 ${currentTime}`);
-                        
-                        if (!nextBatchFound && scheduleDate > currentDate) {
-                            row.classList.add('current-batch');
-                            nextBatchFound = true;
-                        } else if (scheduleDate <= currentDate) {
-                            row.classList.add('past-batch');
-                        }
-                        
-                        scheduleBody.appendChild(row);
-                    });
+            // First get the current prediction
+            fetch('/predict')
+                .then(response => response.json())
+                .then(predictionData => {
+                    // Then load and process the schedule
+                    return fetch('/schedule')
+                        .then(response => response.json())
+                        .then(scheduleData => processSchedule(scheduleData, predictionData));
                 })
                 .catch(error => {
-                    console.error('Error loading schedule:', error);
+                    console.error('Error:', error);
                     document.getElementById('scheduleBody').innerHTML = 
                         '<tr><td colspan="2">Unable to load schedule</td></tr>';
                 });
+        }
+
+        function processSchedule(data, predictionData) {
+            const scheduleBody = document.getElementById('scheduleBody');
+            scheduleBody.innerHTML = '';
+            
+            if (!data.schedule || data.schedule.length === 0) {
+                scheduleBody.innerHTML = '<tr><td colspan="2">Schedule not available</td></tr>';
+                return;
+            }
+            
+            const now = new Date();
+            const predictedTime = predictionData.earliest_time ? new Date(predictionData.earliest_time) : null;
+            
+            let nextBatchFound = false;
+            
+            data.schedule.forEach(([oven, scheduledTime]) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${oven}</td><td>${scheduledTime}</td>`;
+                
+                // Convert schedule time to Date object for comparison
+                const scheduleDate = new Date(`1/1/2024 ${scheduledTime}`);
+                
+                if (predictedTime) {
+                    // If we have a prediction, use it to determine highlighting
+                    if (!nextBatchFound && scheduleDate <= predictedTime && now <= predictedTime) {
+                        // This is the batch we're waiting for
+                        row.classList.add('current-batch');
+                        nextBatchFound = true;
+                    } else if (scheduleDate < now && (!predictedTime || scheduleDate < predictedTime)) {
+                        // This batch is in the past
+                        row.classList.add('past-batch');
+                    }
+                } else {
+                    // Fallback to simple time-based logic if no prediction
+                    if (!nextBatchFound && scheduleDate > now) {
+                        row.classList.add('current-batch');
+                        nextBatchFound = true;
+                    } else if (scheduleDate <= now) {
+                        row.classList.add('past-batch');
+                    }
+                }
+                
+                scheduleBody.appendChild(row);
+            });
         }
 
         // Update schedule highlighting periodically
@@ -351,4 +362,5 @@
     </script>
 </body>
 </html>
+
 
