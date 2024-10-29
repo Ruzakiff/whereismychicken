@@ -107,10 +107,16 @@
 <body>
     <div class="container">
         <h1>How Long for Chicken?</h1>
+        <div class="next-ready-label" style="font-size: 1.2em; color: #4a4a4a; margin-bottom: 0.5em;">
+            Next oven(s) ready in:
+        </div>
         <div class="time" id="countdown"></div>
         <div class="eastern-time" id="eastern-time"></div>
         <div class="prediction-status" id="predictionStatus" style="font-size: 0.8em; color: #666; margin-top: 0.5em;">
             <!-- Will be populated by JavaScript -->
+        </div>
+        <div class="info-note" style="font-size: 0.8em; color: #666; margin-top: 0.5em; font-style: italic;">
+            Based on typical schedule, time may vary by ~20 minutes due to preparation
         </div>
         <button class="btn" onclick="showOvenDetails()">See Oven Details</button>
         <div class="schedule-container">
