@@ -93,6 +93,15 @@
                 font-size: 0.9em;
             }
         }
+
+        .schedule-table tr.current-batch {
+            background-color: #e3f2fd;  /* Light blue background */
+            font-weight: bold;
+        }
+        
+        .schedule-table tr.past-batch {
+            color: #999;  /* Gray out past batches */
+        }
     </style>
 </head>
 <body>
@@ -230,6 +239,9 @@
 
             // Update schedule
             updateSchedule(data);
+
+            // Reload schedule to update highlighting
+            loadSchedule();
         }
 
         function fetchPrediction() {
@@ -297,9 +309,30 @@
                         return;
                     }
                     
-                    data.schedule.forEach(([oven, time]) => {
+                    const now = new Date();
+                    const currentTime = now.toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                    }).toLowerCase();
+                    
+                    let nextBatchFound = false;
+                    
+                    data.schedule.forEach(([oven, scheduledTime]) => {
                         const row = document.createElement('tr');
-                        row.innerHTML = `<td>${oven}</td><td>${time}</td>`;
+                        row.innerHTML = `<td>${oven}</td><td>${scheduledTime}</td>`;
+                        
+                        // Convert times to comparable format (24 hour)
+                        const scheduleDate = new Date(`1/1/2024 ${scheduledTime}`);
+                        const currentDate = new Date(`1/1/2024 ${currentTime}`);
+                        
+                        if (!nextBatchFound && scheduleDate > currentDate) {
+                            row.classList.add('current-batch');
+                            nextBatchFound = true;
+                        } else if (scheduleDate <= currentDate) {
+                            row.classList.add('past-batch');
+                        }
+                        
                         scheduleBody.appendChild(row);
                     });
                 })
@@ -310,7 +343,10 @@
                 });
         }
 
-        // Load schedule when page loads
+        // Update schedule highlighting periodically
+        setInterval(loadSchedule, 60000); // Update every minute
+
+        // Initial load
         document.addEventListener('DOMContentLoaded', loadSchedule);
     </script>
 </body>
