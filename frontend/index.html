@@ -313,15 +313,10 @@
             const scheduleBody = document.getElementById('scheduleBody');
             scheduleBody.innerHTML = '';
             
-            if (!data.schedule || data.schedule.length === 0) {
-                scheduleBody.innerHTML = '<tr><td colspan="2">Schedule not available</td></tr>';
-                return;
-            }
+            if (!data.schedule || !predictionData.earliest_time) return;
             
             const now = new Date();
-            const predictedTime = predictionData.earliest_time ? new Date(predictionData.earliest_time) : null;
-            
-            let nextBatchFound = false;
+            const predictedTime = new Date(predictionData.earliest_time);
             
             data.schedule.forEach(([oven, scheduledTime]) => {
                 const row = document.createElement('tr');
@@ -337,21 +332,22 @@
                     scheduleHours = 0;
                 }
                 
-                // Find the closest schedule time to the prediction
-                if (predictedTime) {
-                    const predictionHours = predictedTime.getHours();
-                    const predictionMinutes = predictedTime.getMinutes();
-                    
-                    // If this schedule time is closest to prediction time (within 2 hours)
-                    if (!nextBatchFound && 
-                        Math.abs(scheduleHours - predictionHours) <= 2 && 
-                        scheduleHours <= predictionHours) {
-                        row.classList.add('current-batch');
-                        nextBatchFound = true;
-                    } else if (scheduleHours < now.getHours() || 
-                             (scheduleHours === now.getHours() && parseInt(minutes) < now.getMinutes())) {
-                        row.classList.add('past-batch');
-                    }
+                const scheduleDate = new Date();
+                scheduleDate.setHours(scheduleHours, parseInt(minutes), 0, 0);
+                
+                // First principles:
+                // 1. If predicted time is within 60 minutes BEFORE a scheduled time, it's the next batch
+                // 2. If predicted time is within 90 minutes AFTER a scheduled time, it's this batch
+                // 3. Otherwise, look for the closest scheduled time
+                
+                const timeDiffMinutes = (predictedTime - scheduleDate) / (1000 * 60);
+                
+                if (timeDiffMinutes >= 0 && timeDiffMinutes <= 90) {
+                    // This is the current batch running late
+                    row.classList.add('current-batch');
+                } else if (scheduleDate < now && !row.classList.contains('current-batch')) {
+                    // This batch is in the past
+                    row.classList.add('past-batch');
                 }
                 
                 scheduleBody.appendChild(row);
