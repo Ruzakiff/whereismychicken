@@ -102,6 +102,83 @@
         .schedule-table tr.past-batch {
             color: #999;  /* Gray out past batches */
         }
+
+        .info-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #666;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 20px;
+            color: #666;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            padding: 20px;
+            border-radius: 20px 20px 0 0;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-out;
+            z-index: 1001;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-content.show {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .modal-close {
+            border: none;
+            background: none;
+            font-size: 24px;
+            color: #666;
+            padding: 5px;
+            cursor: pointer;
+        }
+
+        .faq-item {
+            margin-bottom: 20px;
+        }
+
+        .faq-question {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #4a4a4a;
+        }
+
+        .faq-answer {
+            color: #666;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
@@ -116,9 +193,10 @@
             <!-- Will be populated by JavaScript -->
         </div>
         <div class="info-note" style="font-size: 0.8em; color: #666; margin-top: 0.5em; font-style: italic;">
-            Based on typical schedule, time may vary by ~20 minutes due to preparation
+            Based on typical schedule, time may vary due to preparation
+            <span class="info-icon" onclick="showInfo()">?</span>
         </div>
-        <button class="btn" onclick="showOvenDetails()">See Oven Details</button>
+        <button class="btn" onclick="showOvenDetails()" style="display: none;">See Oven Details</button>
         <div class="schedule-container">
             <table class="schedule-table">
                 <thead>
@@ -131,6 +209,34 @@
                     <!-- Will be populated by JavaScript -->
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="infoModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="margin: 0; font-size: 1.5em;">Frequently Asked Questions</h2>
+                <button class="modal-close" onclick="hideInfo()">&times;</button>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">How accurate are these times?</div>
+                <div class="faq-answer">
+                    Times are based on the typical cooking schedule but may vary depending on preparation time and store busyness.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">What does "Recently confirmed" mean?</div>
+                <div class="faq-answer">
+                    A staff member has manually verified or updated the time within the last 90 minutes.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Why do times sometimes change?</div>
+                <div class="faq-answer">
+                    Cooking times may be adjusted based on customer demand and preparation schedules.
+                </div>
+            </div>
+            <!-- Add more FAQ items as needed -->
         </div>
     </div>
 
@@ -365,6 +471,32 @@
 
         // Initial load
         document.addEventListener('DOMContentLoaded', loadSchedule);
+
+        function showInfo() {
+            const modal = document.getElementById('infoModal');
+            const content = modal.querySelector('.modal-content');
+            modal.style.display = 'block';
+            // Trigger reflow before adding show class for animation
+            content.offsetHeight;
+            content.classList.add('show');
+        }
+
+        function hideInfo() {
+            const modal = document.getElementById('infoModal');
+            const content = modal.querySelector('.modal-content');
+            content.classList.remove('show');
+            // Wait for animation to finish before hiding modal
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+
+        // Close modal when clicking overlay
+        document.getElementById('infoModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideInfo();
+            }
+        });
     </script>
 </body>
 </html>
