@@ -49,7 +49,7 @@ def get_closing_time(date):
     return eastern.localize(naive_datetime)
 
 def get_last_batch_time(date):
-    return get_closing_time(date) - timedelta(minutes=20)  # No batches in last 30 minutes
+    return get_closing_time(date) - timedelta(minutes=60)  # No batches in last hour
 
 def is_within_operating_hours(current_time):
     opening_time = get_opening_time(current_time.date())

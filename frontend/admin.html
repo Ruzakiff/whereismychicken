@@ -2,32 +2,129 @@
 <html>
 <head>
     <title>Chicken Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 0;
+            padding: 16px;
+            font-size: 16px;
+            line-height: 1.5;
         }
+
         .container {
-            max-width: 800px;
+            max-width: 600px;
             margin: 0 auto;
         }
+
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
         .section {
-            margin-bottom: 30px;
+            background: #fff;
             padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
         }
+
+        /* Make all inputs and buttons larger */
+        input, button {
+            font-size: 18px;
+            height: 56px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            box-sizing: border-box;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px 16px;
+            margin-bottom: 12px;
+        }
+
+        input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
         button {
-            padding: 10px 20px;
-            margin: 5px;
+            width: 100%;
+            background: #007bff;
+            color: white;
+            border: none;
+            font-weight: bold;
+            margin-bottom: 16px;
             cursor: pointer;
+            transition: background-color 0.2s;
         }
+
+        button:active {
+            background: #0056b3;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        .input-label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        #reportNowBtn {
+            background: #28a745;
+            font-size: 20px;
+            height: 64px;
+        }
+
+        #reportNowBtn:active {
+            background: #218838;
+        }
+
         .success {
-            color: green;
+            color: #28a745;
+            font-weight: bold;
+            padding: 8px;
+            text-align: center;
         }
+
         .error {
-            color: red;
+            color: #dc3545;
+            font-weight: bold;
+            padding: 8px;
+            text-align: center;
+        }
+
+        /* Status information styling */
+        .status-info {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .status-info p {
+            margin: 8px 0;
+        }
+
+        /* Prevent zoom on input focus for iOS */
+        @media screen and (-webkit-min-device-pixel-ratio:0) { 
+            select,
+            textarea,
+            input {
+                font-size: 16px;
+            }
         }
     </style>
 </head>
@@ -36,29 +133,28 @@
         <h1>Chicken Admin Panel</h1>
 
         <div class="section">
-            <h2>Report Oven Time</h2>
-            <p>Current ovens: <span id="currentPrediction"></span></p>
-            <p style="font-size: 0.9em; color: #666;">
-                Last updated: <span id="lastUpdateTime">Never</span>
-            </p>
-            
-            <!-- Quick actions -->
-            <div style="margin-bottom: 15px;">
-                <button onclick="reportNow()" style="width: 100%; margin-bottom: 10px;">Report Current Time</button>
+            <div class="status-info">
+                <p><strong>Current ovens:</strong> <span id="currentPrediction"></span></p>
+                <p><strong>Last updated:</strong> <span id="lastUpdateTime">Never</span></p>
             </div>
 
+            <!-- Quick actions -->
+            <button id="reportNowBtn" onclick="reportNow()">Report Current Time</button>
+
             <!-- Time input section -->
-            <div style="margin-bottom: 15px;">
+            <div class="input-group">
+                <label class="input-label">Set Future Time</label>
                 <input type="number" id="minutesInput" min="1" step="1"
-                       style="width: 70%; padding: 10px;" placeholder="Minutes remaining">
-                <button onclick="reportFutureTime()" style="width: 25%;">Set</button>
+                       placeholder="Minutes remaining">
+                <button onclick="reportFutureTime()">Set Future Time</button>
             </div>
 
             <!-- Past time section -->
-            <div>
+            <div class="input-group">
+                <label class="input-label">Set Past Time</label>
                 <input type="number" id="pastMinutesInput" min="1" step="1"
-                       style="width: 70%; padding: 10px;" placeholder="Minutes ago">
-                <button onclick="reportPastTime()" style="width: 25%;">Past</button>
+                       placeholder="Minutes ago">
+                <button onclick="reportPastTime()">Set Past Time</button>
             </div>
 
             <p id="reportStatus"></p>

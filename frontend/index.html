@@ -427,6 +427,29 @@
             const now = new Date();
             const predictedTime = new Date(predictionData.earliest_time);
             
+            // Find the last scheduled time
+            let lastScheduledTime = null;
+            data.schedule.forEach(([oven, scheduledTime]) => {
+                const [time, period] = scheduledTime.split(' ');
+                const [hours, minutes] = time.split(':');
+                let scheduleHours = parseInt(hours);
+                if (period.toLowerCase() === 'pm' && scheduleHours !== 12) {
+                    scheduleHours += 12;
+                } else if (period.toLowerCase() === 'am' && scheduleHours === 12) {
+                    scheduleHours = 0;
+                }
+                
+                const scheduleDate = new Date();
+                scheduleDate.setHours(scheduleHours, parseInt(minutes), 0, 0);
+                if (!lastScheduledTime || scheduleDate > lastScheduledTime) {
+                    lastScheduledTime = scheduleDate;
+                }
+            });
+
+            // Add one hour to last scheduled time
+            const finalCutoffTime = new Date(lastScheduledTime.getTime() + 60 * 60 * 1000);
+            
+            // Regular schedule processing
             data.schedule.forEach(([oven, scheduledTime]) => {
                 const row = document.createElement('tr');
                 row.innerHTML = `<td>${oven}</td><td>${scheduledTime}</td>`;
@@ -461,6 +484,13 @@
                 
                 scheduleBody.appendChild(row);
             });
+
+            // Add the "no more chickens" message row if we're past the final cutoff
+            if (now > finalCutoffTime) {
+                const messageRow = document.createElement('tr');
+                messageRow.innerHTML = '<td colspan="2" style="font-style: italic; color: #666;">No more chickens coming out today<br>(leftovers not guaranteed)</td>';
+                scheduleBody.appendChild(messageRow);
+            }
         }
 
         // Initial load
