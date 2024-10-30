@@ -397,33 +397,58 @@
         // Fetch new prediction every minute
         setInterval(fetchPrediction, 60000);
 
-        // Add this with your other JavaScript
-        const evtSource = new EventSource("/events");
-        
-        evtSource.onopen = function(event) {
-            console.log('SSE connection opened');
-        };
-        
-        evtSource.onerror = function(event) {
-            console.log('SSE connection error:', event);
-        };
-        
-        evtSource.onmessage = function(event) {
-            console.log('SSE message received:', event.data);
-            if (event.data === "update") {
-                // Force immediate update
+        function setupSSE() {
+            const evtSource = new EventSource("/events");
+            
+            evtSource.onopen = function(event) {
+                console.log('SSE connection opened');
+            };
+            
+            evtSource.onerror = function(event) {
+                console.log('SSE connection error:', event);
+                evtSource.close();
+                // Attempt to reconnect after a delay
+                setTimeout(setupSSE, 3000);
+            };
+            
+            evtSource.addEventListener('message', function(event) {
+                console.log('SSE message received:', event.data);
+                if (event.data === "update") {
+                    console.log('Update triggered by SSE');
+                    // Force immediate update
+                    fetchPrediction();
+                    loadSchedule();
+                }
+            });
+
+            // Handle page visibility changes
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible') {
+                    console.log('Page became visible - fetching updates');
+                    fetchPrediction();
+                    loadSchedule();
+                    // Reestablish SSE connection if needed
+                    if (evtSource.readyState === EventSource.CLOSED) {
+                        setupSSE();
+                    }
+                }
+            });
+
+            return evtSource;
+        }
+
+        // Initialize SSE
+        let evtSource = setupSSE();
+
+        // Add this to your existing page load handlers
+        window.addEventListener('pageshow', function(event) {
+            // Force refresh when navigating back to the page
+            if (event.persisted) {
+                console.log('Page restored from cache - fetching updates');
                 fetchPrediction();
-                // Reset the interval timer to avoid quick double updates
-                clearInterval(updateInterval);
-                updateInterval = setInterval(fetchPrediction, 60000);
+                loadSchedule();
             }
-        };
-
-        // Store interval ID so we can reset it
-        let updateInterval = setInterval(fetchPrediction, 60000);
-
-        // Initial update
-        fetchPrediction();
+        });
 
         // Add this to your existing JavaScript
         function loadSchedule() {
