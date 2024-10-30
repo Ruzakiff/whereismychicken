@@ -339,8 +339,19 @@
             if (data.earliest_time) {
                 targetTime = new Date(data.earliest_time);
                 const now = new Date();
+                
+                // If prediction is for tomorrow, always show "Next batch tomorrow"
                 if (targetTime.getDate() !== now.getDate()) {
                     document.getElementById('countdown').textContent = "Next batch tomorrow";
+                    document.getElementById('eastern-time').textContent = 
+                        `Opens at ${targetTime.toLocaleTimeString('en-US', { 
+                            timeZone: 'America/New_York',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true 
+                        })}`;
+                    // Don't update countdown for tomorrow's predictions
+                    targetTime = null;  // This prevents updateCountdown from running
                 } else if (!data.is_open) {
                     document.getElementById('countdown').textContent = "Store closed";
                 } else {

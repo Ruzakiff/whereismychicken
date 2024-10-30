@@ -92,7 +92,8 @@ def adjust_prediction(prediction, base_time):
             if prediction.weekday() == 6:  # Sunday
                 return prediction  # Allow predictions within buffer on Sundays
             else:
-                return None  # No more ovens for the day
+                next_day = prediction.date() + timedelta(days=1)
+                return get_opening_time(next_day)
         else:
             return get_opening_time(prediction.date())
 
