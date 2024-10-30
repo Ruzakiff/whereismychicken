@@ -172,13 +172,17 @@ def get_predictions():
         time_since_update = current_time - last_manual_update
         is_confirmed = time_since_update.total_seconds() < 5400  # 90 minutes in seconds
     
+    # Add last_prediction to response
+    last_prediction = last_ml_prediction_time if last_ml_prediction_time else None
+    
     return jsonify({
         'current_time': current_time.isoformat(),
         'is_open': is_within_operating_hours(current_time),
         'earliest_time': next_oven_time.isoformat() if next_oven_time else None,
         'is_sunday': current_time.weekday() == 6,
         'last_manual_update': last_manual_update.isoformat() if last_manual_update else None,
-        'is_confirmed': is_confirmed
+        'is_confirmed': is_confirmed,
+        'last_prediction': last_prediction.isoformat() if last_prediction else None
     })
 
 @app.route('/report-actual-time', methods=['POST'])

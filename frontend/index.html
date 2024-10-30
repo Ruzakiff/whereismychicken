@@ -365,8 +365,20 @@
                 }
                 statusElement.style.display = 'block';
             } else {
-                document.getElementById('countdown').textContent = "No prediction available";
-                document.getElementById('eastern-time').textContent = "";
+                // Show the last prediction time if available
+                if (data.last_prediction) {
+                    const lastTime = new Date(data.last_prediction);
+                    const timeStr = lastTime.toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    }).toLowerCase();
+                    document.getElementById('countdown').textContent = "No More Ovens coming out today, the last oven came out at:";
+                    document.getElementById('eastern-time').textContent = timeStr;
+                } else {
+                    document.getElementById('countdown').textContent = "No More Ovens coming out today";
+                    document.getElementById('eastern-time').textContent = "";
+                }
                 document.getElementById('predictionStatus').style.display = 'none';
                 targetTime = null;
             }
