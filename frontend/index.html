@@ -16,13 +16,31 @@
         }
         .container {
             text-align: center;
-            position: relative;
-            top: -15vh;
+            padding: 20px;
+            max-height: 100vh;
+            overflow-y: auto;
+            top: 0;
+            padding-top: 40px;
         }
+
+        @media (max-height: 600px) {
+            .container {
+                padding-top: 20px;
+            }
+        }
+
         h1 {
             font-size: 2.5em;
             margin-bottom: 1em;
         }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2em;
+                margin-bottom: 0.5em;
+            }
+        }
+
         .time {
             font-size: 4em;
             font-weight: bold;
