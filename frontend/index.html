@@ -187,6 +187,25 @@
                 padding: 12px;
             }
         }
+
+        /* Add new footer styles */
+        .footer {
+            margin-top: 2em;
+            padding: 1em;
+            font-size: 0.8em;
+            color: #666;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 480px) {
+            .footer {
+                font-size: 0.7em;
+                padding: 0.8em;
+                margin-top: 1.5em;
+            }
+        }
     </style>
     <link rel="stylesheet" href="/static/styles/faq.css">
 </head>
@@ -203,7 +222,9 @@
         </div>
         <div class="info-note" style="font-size: 0.8em; color: #666; margin-top: 0.5em; font-style: italic;">
             Based on typical schedule, time may vary due to preparation
-            <span class="info-icon" onclick="showInfo()">?</span>
+        </div>
+        <div style="font-size: 0.8em; margin-top: 0.5em;">
+            <a href="#" onclick="showInfo(); return false;" style="color: #0066cc; text-decoration: none;">Learn more about how this tool works! Click Here</a>
         </div>
         <button class="btn" onclick="showOvenDetails()" style="display: none;">See Oven Details</button>
         <div class="schedule-container">
@@ -218,6 +239,10 @@
                     <!-- Will be populated by JavaScript -->
                 </tbody>
             </table>
+        </div>
+        <div class="footer">
+            For business inquiries or custom solutions, contact<br>
+            <a href="mailto:ryan@howlongforchicken.com" style="color: #0066cc; text-decoration: none;">ryan@howlongforchicken.com</a>
         </div>
     </div>
 
