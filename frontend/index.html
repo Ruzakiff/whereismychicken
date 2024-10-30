@@ -221,7 +221,7 @@
             <!-- Will be populated by JavaScript -->
         </div>
         <div class="info-note" style="font-size: 0.8em; color: #666; margin-top: 0.5em; font-style: italic;">
-            Based on typical schedule, time may vary due to preparation
+            Estimated based on typical schedule. Actual ready time may vary due to preparation delays or changes.
         </div>
         <div style="font-size: 0.8em; margin-top: 0.5em;">
             <a href="#" onclick="showInfo(); return false;" style="color: #0066cc; text-decoration: none;">Learn more about how this tool works! Click Here</a>
@@ -232,7 +232,7 @@
                 <thead>
                     <tr>
                         <th>Oven</th>
-                        <th>Target Time</th>
+                        <th>Scheduled Time</th>
                     </tr>
                 </thead>
                 <tbody id="scheduleBody">
@@ -357,7 +357,7 @@
                         minute: '2-digit',
                         hour12: true
                     }).toLowerCase();
-                    statusElement.textContent = `Recently confirmed at ${timeStr}`;
+                    statusElement.textContent = `Last Updated at ${timeStr}`;
                     statusElement.style.color = '#2e7d32';  // dark green
                 } else {
                     statusElement.textContent = 'Estimated Time based on schedule';
