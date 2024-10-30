@@ -42,6 +42,8 @@
     padding: 20px;
     border-bottom: 1px solid #eee;
     z-index: 1002;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .modal-close {
@@ -84,5 +86,12 @@
 
     .modal-content.show {
         transform: translateX(-50%) translateY(0);
+    }
+
+    .modal-header {
+        max-width: 600px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 20px 20px 0 0;
     }
 }
