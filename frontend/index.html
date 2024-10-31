@@ -500,8 +500,11 @@
             const now = new Date();
             const predictedTime = new Date(predictionData.earliest_time);
             
-            // Find the last scheduled time
-            let lastScheduledTime = null;
+            let closestBatch = null;
+            let closestDiff = Infinity;
+            let closestOven = null;  // Add this to track which oven is closest
+            
+            // First pass: find the closest batch
             data.schedule.forEach(([oven, scheduledTime]) => {
                 const [time, period] = scheduledTime.split(' ');
                 const [hours, minutes] = time.split(':');
@@ -514,20 +517,24 @@
                 
                 const scheduleDate = new Date();
                 scheduleDate.setHours(scheduleHours, parseInt(minutes), 0, 0);
-                if (!lastScheduledTime || scheduleDate > lastScheduledTime) {
-                    lastScheduledTime = scheduleDate;
+                
+                const timeDiffMinutes = (predictedTime - scheduleDate) / (1000 * 60);
+                
+                // Only consider batches within our window
+                if (timeDiffMinutes >= 0 && timeDiffMinutes <= 90) {
+                    if (!closestBatch || Math.abs(timeDiffMinutes) < Math.abs(closestDiff)) {
+                        closestBatch = scheduleDate;
+                        closestDiff = timeDiffMinutes;
+                        closestOven = oven;  // Track which oven is closest
+                    }
                 }
             });
 
-            // Add one hour to last scheduled time
-            const finalCutoffTime = new Date(lastScheduledTime.getTime() + 60 * 60 * 1000);
-            
-            // Regular schedule processing
+            // Second pass: render the schedule with highlighting
             data.schedule.forEach(([oven, scheduledTime]) => {
                 const row = document.createElement('tr');
                 row.innerHTML = `<td>${oven}</td><td>${scheduledTime}</td>`;
                 
-                // Convert schedule time to comparable format
                 const [time, period] = scheduledTime.split(' ');
                 const [hours, minutes] = time.split(':');
                 let scheduleHours = parseInt(hours);
@@ -540,30 +547,15 @@
                 const scheduleDate = new Date();
                 scheduleDate.setHours(scheduleHours, parseInt(minutes), 0, 0);
                 
-                // First principles:
-                // 1. If predicted time is within 60 minutes BEFORE a scheduled time, it's the next batch
-                // 2. If predicted time is within 90 minutes AFTER a scheduled time, it's this batch
-                // 3. Otherwise, look for the closest scheduled time
-                
-                const timeDiffMinutes = (predictedTime - scheduleDate) / (1000 * 60);
-                
-                if (timeDiffMinutes >= 0 && timeDiffMinutes <= 90) {
-                    // This is the current batch running late
+                // Only highlight if this is the closest oven
+                if (oven === closestOven) {
                     row.classList.add('current-batch');
-                } else if (scheduleDate < now && !row.classList.contains('current-batch')) {
-                    // This batch is in the past
+                } else if (scheduleDate < now) {
                     row.classList.add('past-batch');
                 }
-                
+
                 scheduleBody.appendChild(row);
             });
-
-            // Add the "no more chickens" message row if we're past the final cutoff
-            if (now > finalCutoffTime) {
-                const messageRow = document.createElement('tr');
-                messageRow.innerHTML = '<td colspan="2" style="font-style: italic; color: #666;">No more chickens coming out today<br>(leftovers not guaranteed)</td>';
-                scheduleBody.appendChild(messageRow);
-            }
         }
 
         // Initial load
