@@ -346,7 +346,7 @@
                 const timeSinceLastBatch = (now - lastTime) / (1000 * 60); // minutes
 
                 if (timeSinceLastBatch > 90) {
-                    document.getElementById('countdown').textContent = "No More Ovens coming out today";
+                    document.getElementById('countdown').textContent = "No more ovens coming out today";
                     document.getElementById('eastern-time').textContent = 
                         `Last oven was at ${lastTime.toLocaleTimeString('en-US', { 
                             hour: 'numeric',
@@ -357,7 +357,7 @@
                 } else {
                     // If prediction is for tomorrow, always show "Next batch tomorrow"
                     if (targetTime.getDate() !== now.getDate()) {
-                        document.getElementById('countdown').textContent = "Next batch tomorrow";
+                        document.getElementById('countdown').textContent = "Next ovens tomorrow";
                         document.getElementById('eastern-time').textContent = 
                             `Opens at ${targetTime.toLocaleTimeString('en-US', { 
                                 timeZone: 'America/New_York',
@@ -396,22 +396,7 @@
                 updateSchedule(data);
 
                 // Reload schedule to update highlighting
-                // Update prediction status message
-                const statusElement = document.getElementById('predictionStatus');
-                if (data.is_confirmed) {
-                    const updateTime = new Date(data.last_manual_update);
-                    const timeStr = updateTime.toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true
-                    }).toLowerCase();
-                    statusElement.textContent = `Last Updated at ${timeStr}`;
-                    statusElement.style.color = '#2e7d32';  // dark green
-                } else {
-                    statusElement.textContent = 'Estimated Time based on schedule';
-                    statusElement.style.color = '#666';  // gray
-                }
-                statusElement.style.display = 'block';
+                loadSchedule();
             } else {
                 // Show the last prediction time if available
                 if (data.last_prediction) {
@@ -430,12 +415,6 @@
                 document.getElementById('predictionStatus').style.display = 'none';
                 targetTime = null;
             }
-
-            // Update schedule
-            updateSchedule(data);
-
-            // Reload schedule to update highlighting
-            loadSchedule();
         }
 
         function fetchPrediction() {
