@@ -7,6 +7,8 @@ from queue import Queue
 from flask import Response
 import os
 from urllib.parse import unquote
+from werkzeug.serving import is_running_from_reloader
+
 # Add near the top with other imports
 STATIC_SCHEDULE_DIR = os.path.join(os.path.dirname(__file__), 'staticschedule')
 
@@ -24,7 +26,7 @@ eastern = pytz.timezone('US/Eastern')
 current_prediction = None
 last_ml_prediction_time = None
 oven_details = [{'time': '--:--', 'status': 'Idle', 'leftovers': '--'} for _ in range(4)]
-clients = []
+clients = set()
 last_manual_update = None
 
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN')
@@ -248,28 +250,44 @@ def admin(token):
     return render_template('admin.html')
 
 def notify_clients():
+    dead_clients = set()
     app.logger.info(f'Notifying {len(clients)} clients')
-    for client in clients[:]:
+    
+    for client in clients:
         try:
-            client.put("update")
-            app.logger.info('Successfully notified a client')
+            # Non-blocking put with timeout
+            client.put("update", timeout=0.1)
         except:
-            clients.remove(client)
-            app.logger.info('Removed disconnected client')
+            dead_clients.add(client)
+            app.logger.info('Marked dead client for removal')
+    
+    # Clean up dead clients
+    clients.difference_update(dead_clients)
 
 @app.route('/events')
 def events():
     def stream():
-        client = Queue()
-        clients.append(client)
+        client = Queue(maxsize=5)  # Limit queue size
+        clients.add(client)
         try:
             while True:
-                message = client.get()
-                yield f"data: {message}\n\n"
+                try:
+                    message = client.get(timeout=30)  # Add timeout
+                    yield f"data: {message}\n\n"
+                except:
+                    # Break on timeout or error
+                    break
         finally:
-            clients.remove(client)
+            clients.discard(client)
     
-    return Response(stream(), mimetype='text/event-stream')
+    return Response(
+        stream(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive'
+        }
+    )
 
 @app.route('/schedule')
 def get_schedule():
@@ -292,7 +310,33 @@ def get_schedule():
         return jsonify({'schedule': [], 'error': str(e)}), 500
 
 if __name__ == '__main__':
+    # Only use Flask's development server when running directly
+    if is_running_from_reloader():
+        app.run(host='0.0.0.0', port=5000, debug=True)
+    else:
+        # Use Gunicorn for production
+        import gunicorn.app.base
 
-    app.logger.info('Application starting')
-    app.run(host='0.0.0.0', port=5000, debug=False)
+        class StandaloneApplication(gunicorn.app.base.BaseApplication):
+            def __init__(self, app, options=None):
+                self.options = options or {}
+                self.application = app
+                super().__init__()
+
+            def load_config(self):
+                for key, value in self.options.items():
+                    self.cfg.set(key.lower(), value)
+
+            def load(self):
+                return self.application
+
+        options = {
+            'bind': '0.0.0.0:5000',
+            'workers': 3,
+            'threads': 4,
+            'worker_class': 'gthread',
+            'timeout': 120
+        }
+
+        StandaloneApplication(app, options).run()
 
